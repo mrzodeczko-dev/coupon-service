@@ -1,5 +1,8 @@
 package com.rzodeczko.domain.model;
 
+import com.rzodeczko.domain.exception.CouponCountryMismatchException;
+import com.rzodeczko.domain.exception.CouponExhaustedException;
+
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -38,6 +41,23 @@ public class Coupon {
     public static Coupon reconstitute(UUID id, CouponCode code, Instant createdAt,
                                       int maxUsages, int currentUsages, Country country) {
         return new Coupon(id, code, createdAt, maxUsages, currentUsages, country);
+    }
+
+    /**
+     * Registers a single usage of this coupon.
+     *
+     * @param requestCountry the country resolved from the caller's IP
+     * @throws CouponExhaustedException      if the coupon has already reached its usage limit
+     * @throws CouponCountryMismatchException if the caller's country does not match the coupon's country
+     */
+    public void use(Country requestCountry) {
+        if (isExhausted()) {
+            throw new CouponExhaustedException(code.value());
+        }
+        if (!this.country.equals(requestCountry)) {
+            throw new CouponCountryMismatchException(this.country.code(), requestCountry.code());
+        }
+        this.currentUsages++;
     }
 
     public boolean isExhausted() {
