@@ -63,6 +63,6 @@ public class JpaCouponRepositoryAdapter implements CouponRepository {
                 .code(code.value())
                 .userId(userId)
                 .build();
-        jpaCouponUsageRepository.save(usage);
+        jpaCouponUsageRepository.saveAndFlush(usage);
     }
 }
