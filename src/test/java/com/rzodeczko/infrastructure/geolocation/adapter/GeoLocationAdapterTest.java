@@ -1,0 +1,67 @@
+package com.rzodeczko.infrastructure.geolocation.adapter;
+
+import com.rzodeczko.application.exception.GeoLocationException;
+import com.rzodeczko.domain.model.Country;
+import com.rzodeczko.infrastructure.geolocation.dto.GeoLocationResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
+
+class GeoLocationAdapterTest {
+
+    private MockRestServiceServer mockServer;
+    private GeoLocationAdapter adapter;
+
+    @BeforeEach
+    void setUp() {
+        var builder = RestClient.builder();
+        mockServer = MockRestServiceServer.bindTo(builder).build();
+        adapter = new GeoLocationAdapter(builder);
+    }
+
+    @Nested
+    class ResolveCountry {
+
+        @Test
+        void shouldReturnCountryOnSuccess() {
+            mockServer.expect(requestTo("http://ip-api.com/json/89.64.55.1?fields=status,countryCode,message"))
+                    .andRespond(withSuccess("""
+                            {"status":"success","countryCode":"PL"}
+                            """, MediaType.APPLICATION_JSON));
+
+            var country = adapter.resolveCountry("89.64.55.1");
+
+            assertEquals(new Country("PL"), country);
+            mockServer.verify();
+        }
+
+        @Test
+        void shouldThrowWhenApiReturnsFailStatus() {
+            mockServer.expect(requestTo("http://ip-api.com/json/invalid?fields=status,countryCode,message"))
+                    .andRespond(withSuccess("""
+                            {"status":"fail","message":"invalid query"}
+                            """, MediaType.APPLICATION_JSON));
+
+            assertThrows(GeoLocationException.class,
+                    () -> adapter.resolveCountry("invalid"));
+            mockServer.verify();
+        }
+
+        @Test
+        void shouldThrowOnServerError() {
+            mockServer.expect(requestTo("http://ip-api.com/json/8.8.8.8?fields=status,countryCode,message"))
+                    .andRespond(withServerError());
+
+            assertThrows(GeoLocationException.class,
+                    () -> adapter.resolveCountry("8.8.8.8"));
+            mockServer.verify();
+        }
+    }
+}
