@@ -65,7 +65,7 @@ public class Coupon {
     }
 
     public int getRemainingUsages() {
-        return Math.max(0, maxUsages - currentUsages);
+        return maxUsages - currentUsages;
     }
 
     // --- accessors ---

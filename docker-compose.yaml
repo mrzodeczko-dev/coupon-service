@@ -1,0 +1,83 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "3"
+
+services:
+  # --------------------------------------------------------------------------------------------------------------------
+  # COUPON MYSQL
+  # --------------------------------------------------------------------------------------------------------------------
+  coupon-mysql:
+    hostname: coupon-mysql
+    container_name: coupon-mysql
+    image: mysql:9.6.0
+    restart: unless-stopped
+    volumes:
+      - coupon-mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${COUPON_SERVICE_MYSQL_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${COUPON_SERVICE_MYSQL_DB_NAME}
+      MYSQL_USER: ${COUPON_SERVICE_MYSQL_DB_USER}
+      MYSQL_PASSWORD: ${COUPON_SERVICE_MYSQL_DB_PASSWORD}
+    command: >
+      --default-time-zone='+00:00'
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=${COUPON_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE:-256M}
+      --max-connections=${COUPON_SERVICE_MYSQL_MAX_CONNECTIONS:-200}
+    expose:
+      - "3306"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    logging: *default-logging
+    healthcheck:
+      test: [ "CMD-SHELL", "mysql -h localhost -u $$MYSQL_USER -p$$MYSQL_PASSWORD -e \"SELECT 1 FROM information_schema.schemata WHERE schema_name='$$MYSQL_DATABASE'\"" ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - coupon-network
+
+  # --------------------------------------------------------------------------------------------------------------------
+  # COUPON SERVICE
+  # --------------------------------------------------------------------------------------------------------------------
+  coupon-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure:5
+    scale: 3
+    ports:
+      - "${COUPON_SERVICE_PORT}:8080"
+    depends_on:
+      coupon-mysql:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://coupon-mysql:3306/${COUPON_SERVICE_MYSQL_DB_NAME}?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${COUPON_SERVICE_MYSQL_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${COUPON_SERVICE_MYSQL_DB_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    logging: *default-logging
+    networks:
+      - coupon-network
+
+volumes:
+  coupon-mysql:
+
+networks:
+  coupon-network:
