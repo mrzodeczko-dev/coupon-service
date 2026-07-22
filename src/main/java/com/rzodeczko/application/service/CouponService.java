@@ -1,6 +1,7 @@
 package com.rzodeczko.application.service;
 
 import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
+import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
 import com.rzodeczko.domain.exception.CouponNotFoundException;
 import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
@@ -37,5 +38,15 @@ public class CouponService {
     public Coupon findByCode(CouponCode code) {
         return couponRepository.findByCode(code)
                 .orElseThrow(() -> new CouponNotFoundException(code.value()));
+    }
+
+    public void validateUserNotUsed(CouponCode code, String userId) {
+        if (couponRepository.existsUsageByCodeAndUserId(code, userId)) {
+            throw new CouponAlreadyUsedByUserException(code.value(), userId);
+        }
+    }
+
+    public void recordUsage(CouponCode code, String userId) {
+        couponRepository.saveUsage(code, userId);
     }
 }

@@ -5,7 +5,9 @@ import com.rzodeczko.domain.model.CouponCode;
 import com.rzodeczko.domain.repository.CouponRepository;
 import com.rzodeczko.infrastructure.persistence.entity.CouponEntity;
 import com.rzodeczko.infrastructure.persistence.mapper.CouponMapper;
+import com.rzodeczko.infrastructure.persistence.entity.CouponUsageEntity;
 import com.rzodeczko.infrastructure.persistence.repository.JpaCouponRepository;
+import com.rzodeczko.infrastructure.persistence.repository.JpaCouponUsageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ import java.util.Optional;
 public class JpaCouponRepositoryAdapter implements CouponRepository {
 
     private final JpaCouponRepository jpaCouponRepository;
+    private final JpaCouponUsageRepository jpaCouponUsageRepository;
     private final CouponMapper couponMapper;
 
     @Override
@@ -45,5 +48,21 @@ public class JpaCouponRepositoryAdapter implements CouponRepository {
     @Transactional(readOnly = true)
     public boolean existsByCode(CouponCode code) {
         return jpaCouponRepository.existsByCode(code.value());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsUsageByCodeAndUserId(CouponCode code, String userId) {
+        return jpaCouponUsageRepository.existsByCodeAndUserId(code.value(), userId);
+    }
+
+    @Override
+    @Transactional
+    public void saveUsage(CouponCode code, String userId) {
+        var usage = CouponUsageEntity.builder()
+                .code(code.value())
+                .userId(userId)
+                .build();
+        jpaCouponUsageRepository.save(usage);
     }
 }

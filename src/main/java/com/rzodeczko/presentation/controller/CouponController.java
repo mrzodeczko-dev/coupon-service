@@ -7,6 +7,7 @@ import com.rzodeczko.application.port.input.UseCouponUseCase;
 import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.presentation.dto.CreateCouponRequestDto;
 import com.rzodeczko.presentation.dto.CreateCouponResponseDto;
+import com.rzodeczko.presentation.dto.UseCouponRequestDto;
 import com.rzodeczko.presentation.dto.UseCouponResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -65,12 +66,13 @@ public class CouponController {
     @PostMapping("/{code}/usages")
     public ResponseEntity<UseCouponResponseDto> useCoupon(
             @PathVariable String code,
+            @RequestBody @Valid UseCouponRequestDto useCouponRequest,
             HttpServletRequest request) {
 
         String ipAddress = resolveClientIp(request);
-        log.info(">>> Received use coupon request. code={}, ip={}", code, ipAddress);
+        log.info(">>> Received use coupon request. code={}, userId={}, ip={}", code, useCouponRequest.userId(), ipAddress);
 
-        var command = new UseCouponCommand(code, ipAddress);
+        var command = new UseCouponCommand(code, useCouponRequest.userId(), ipAddress);
         Coupon coupon = useCouponUseCase.use(command);
 
         var response = new UseCouponResponseDto(

@@ -6,11 +6,15 @@ import com.rzodeczko.application.port.input.UseCouponCommand;
 import com.rzodeczko.application.port.input.UseCouponUseCase;
 import com.rzodeczko.application.port.output.GeoLocationProvider;
 import com.rzodeczko.application.service.CouponService;
+import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
+import com.rzodeczko.domain.exception.CouponConcurrentModificationException;
 import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
 import com.rzodeczko.domain.model.Country;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,16 +44,31 @@ public class CouponUseCaseImpl implements CreateCouponUseCase, UseCouponUseCase 
     @Override
     @Transactional
     public Coupon use(UseCouponCommand command) {
-        log.info("Using coupon. code={}, ip={}", command.code(), command.ipAddress());
+        log.info("Using coupon. code={}, userId={}, ip={}", command.code(), command.userId(), command.ipAddress());
 
         var code = new CouponCode(command.code());
+
+        couponService.validateUserNotUsed(code, command.userId());
+
         Country requestCountry = geoLocationProvider.resolveCountry(command.ipAddress());
 
         Coupon coupon = couponService.findByCode(code);
         coupon.use(requestCountry);
-        Coupon saved = couponService.save(coupon);
 
-        log.info("Coupon used. code={}, remainingUsages={}", saved.getCode().value(), saved.getRemainingUsages());
+        Coupon saved;
+        try {
+            saved = couponService.save(coupon);
+        } catch (OptimisticLockingFailureException e) {
+            throw new CouponConcurrentModificationException(command.code());
+        }
+
+        try {
+            couponService.recordUsage(code, command.userId());
+        } catch (DataIntegrityViolationException e) {
+            throw new CouponAlreadyUsedByUserException(command.code(), command.userId());
+        }
+
+        log.info("Coupon used. code={}, userId={}, remainingUsages={}", saved.getCode().value(), command.userId(), saved.getRemainingUsages());
         return saved;
     }
 }

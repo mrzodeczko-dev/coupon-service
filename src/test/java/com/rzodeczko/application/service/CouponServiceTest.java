@@ -1,6 +1,7 @@
 package com.rzodeczko.application.service;
 
 import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
+import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
 import com.rzodeczko.domain.exception.CouponNotFoundException;
 import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
@@ -89,6 +90,36 @@ class CouponServiceTest {
 
             assertEquals(coupon, result);
             verify(couponRepository).save(coupon);
+        }
+    }
+
+    @Nested
+    class ValidateUserNotUsed {
+
+        @Test
+        void shouldPassWhenUserHasNotUsedCoupon() {
+            given(couponRepository.existsUsageByCodeAndUserId(CODE, "user-1")).willReturn(false);
+
+            assertDoesNotThrow(() -> couponService.validateUserNotUsed(CODE, "user-1"));
+        }
+
+        @Test
+        void shouldThrowWhenUserAlreadyUsedCoupon() {
+            given(couponRepository.existsUsageByCodeAndUserId(CODE, "user-1")).willReturn(true);
+
+            assertThrows(CouponAlreadyUsedByUserException.class,
+                    () -> couponService.validateUserNotUsed(CODE, "user-1"));
+        }
+    }
+
+    @Nested
+    class RecordUsage {
+
+        @Test
+        void shouldDelegateToRepository() {
+            couponService.recordUsage(CODE, "user-1");
+
+            verify(couponRepository).saveUsage(CODE, "user-1");
         }
     }
 

@@ -15,4 +15,8 @@ public interface CouponRepository {
     Optional<Coupon> findByCode(CouponCode code);
 
     boolean existsByCode(CouponCode code);
+
+    boolean existsUsageByCodeAndUserId(CouponCode code, String userId);
+
+    void saveUsage(CouponCode code, String userId);
 }

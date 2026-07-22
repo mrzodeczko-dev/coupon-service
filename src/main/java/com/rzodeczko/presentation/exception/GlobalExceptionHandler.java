@@ -2,6 +2,8 @@ package com.rzodeczko.presentation.exception;
 
 import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
+import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
+import com.rzodeczko.domain.exception.CouponConcurrentModificationException;
 import com.rzodeczko.domain.exception.CouponCountryMismatchException;
 import com.rzodeczko.domain.exception.CouponExhaustedException;
 import com.rzodeczko.domain.exception.CouponNotFoundException;
@@ -43,6 +45,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(CouponExhaustedException.class)
     public ProblemDetail handle(CouponExhaustedException e) {
         log.warn("Coupon exhausted: {}", e.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(CouponAlreadyUsedByUserException.class)
+    public ProblemDetail handle(CouponAlreadyUsedByUserException e) {
+        log.warn("Coupon already used by user: {}", e.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(CouponConcurrentModificationException.class)
+    public ProblemDetail handle(CouponConcurrentModificationException e) {
+        log.warn("Concurrent modification: {}", e.getMessage());
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
     }
 

@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-coupon-usages-table
+      author: rzodeczko
+      changes:
+        - createTable:
+            tableName: coupon_usages
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: used_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: coupon_usages
+            columnNames: code, user_id
+            constraintName: uq_coupon_usages_code_user_id
+        - createIndex:
+            tableName: coupon_usages
+            indexName: idx_coupon_usages_code
+            columns:
+              - column:
+                  name: code
