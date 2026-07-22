@@ -1,0 +1,33 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:coupon-service}
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/coupon_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 2000
+      keepalive-time: 30000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

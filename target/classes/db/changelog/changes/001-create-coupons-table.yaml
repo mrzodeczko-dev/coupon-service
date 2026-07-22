@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: mrzodeczko-dev
+      changes:
+        - createTable:
+            tableName: coupons
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(36)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP(6)
+                  defaultValueComputed: CURRENT_TIMESTAMP(6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_usages
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_usages
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: country
+                  type: CHAR(2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP(6)
+              - column:
+                  name: version
+                  type: BIGINT
+
+        - addUniqueConstraint:
+            tableName: coupons
+            columnNames: code
+            constraintName: uk_coupons_code

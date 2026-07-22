@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="aed5a62c-6f75-44fe-a401-a45777f8e81c" name="Changes" comment="feat: add coupon entity, repository, and Liquibase migration for coupons table">
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/com/rzodeczko/application/service/CouponServiceTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/com/rzodeczko/infrastructure/persistence/mapper/CouponMapperTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/application.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/CouponServiceApplication.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/application/port/input/CreateCouponCommand.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/application/port/input/CreateCouponUseCase.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/application/port/input/UseCouponCommand.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/application/port/input/UseCouponUseCase.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/application/port/output/GeoLocationProvider.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/application/service/CouponService.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/exception/CouponAlreadyExistsException.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/exception/CouponCountryMismatchException.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/exception/CouponDomainException.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/exception/CouponExhaustedException.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/exception/CouponNotFoundException.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/model/Country.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/model/Coupon.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/model/CouponCode.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/domain/repository/CouponRepository.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/infrastructure/configuration/BeanConfiguration.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/infrastructure/configuration/JpaAuditingConfig.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/infrastructure/persistence/entity/CouponEntity$CouponEntityBuilder.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/infrastructure/persistence/entity/CouponEntity.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/infrastructure/persistence/mapper/CouponMapper.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/infrastructure/persistence/repository/JpaCouponRepository.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/com/rzodeczko/infrastructure/persistence/repository/adapter/JpaCouponRepositoryAdapter.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/changelog/changes/001-create-coupons-table.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/changelog/db.changelog-master.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/test-classes/com/rzodeczko/TestCouponServiceApplication.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/test-classes/com/rzodeczko/TestcontainersConfiguration.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/test-classes/com/rzodeczko/domain/model/CountryTest.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/test-classes/com/rzodeczko/domain/model/CouponCodeTest.class" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/test-classes/com/rzodeczko/domain/model/CouponTest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/com/rzodeczko/domain/model/CouponTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/com/rzodeczko/domain/model/CouponTest.java" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CopilotPersistence">
+    <persistenceIdMap>
+      <entry key="_C:/Users/Administrator/Desktop/Empik projekt/coupon-service" value="3GpIkmrXNiuEgljV7bR6HEilwLK" />
+    </persistenceIdMap>
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="30" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;mrzodeczko-dev&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/mrzodeczko-dev/coupon-service.git&quot;,
+    &quot;accountId&quot;: &quot;dc95bbad-ed66-4b13-930b-6d9b686bc22d&quot;
+  }
+}</component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3GpIkmrXNiuEgljV7bR6HEilwLK" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "JUnit.CouponServiceTest.executor": "Run",
+    "JUnit.CouponServiceTest.shouldBuildCouponWhenCodeDoesNotExist.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Spring Boot.TestCouponServiceApplication.executor": "Run",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "copilot.chat.legacySessionMetadata.migrated": "true",
+    "git-widget-placeholder": "master",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/Administrator/Desktop/Empik projekt/coupon-service",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RunManager" selected="JUnit.CouponServiceTest">
+    <configuration name="CouponServiceTest" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="coupon-service" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.rzodeczko.application.service.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="com.rzodeczko.application.service" />
+      <option name="MAIN_CLASS_NAME" value="com.rzodeczko.application.service.CouponServiceTest" />
+      <option name="TEST_OBJECT" value="class" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="CouponServiceTest.shouldBuildCouponWhenCodeDoesNotExist" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="coupon-service" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.rzodeczko.application.service.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="com.rzodeczko.application.service" />
+      <option name="MAIN_CLASS_NAME" value="com.rzodeczko.application.service.CouponServiceTest" />
+      <option name="METHOD_NAME" value="shouldBuildCouponWhenCodeDoesNotExist" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="CouponServiceApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="coupon-service" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.rzodeczko.CouponServiceApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestCouponServiceApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
+      <module name="coupon-service" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.rzodeczko.TestCouponServiceApplication" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.rzodeczko.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JUnit.CouponServiceTest" />
+        <item itemvalue="JUnit.CouponServiceTest.shouldBuildCouponWhenCodeDoesNotExist" />
+        <item itemvalue="Spring Boot.TestCouponServiceApplication" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="aed5a62c-6f75-44fe-a401-a45777f8e81c" name="Changes" comment="" />
+      <created>1784662228603</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1784662228603</updated>
+      <workItem from="1784662229698" duration="1883000" />
+      <workItem from="1784699830712" duration="3552000" />
+    </task>
+    <task id="LOCAL-00001" summary="feat: add domain logic — coupon usage with validation">
+      <option name="closed" value="true" />
+      <created>1784663298194</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1784663298194</updated>
+    </task>
+    <task id="LOCAL-00002" summary="feat: define domain repository">
+      <option name="closed" value="true" />
+      <created>1784663924123</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1784663924123</updated>
+    </task>
+    <task id="LOCAL-00003" summary="feat: add coupon entity, repository, and Liquibase migration for coupons table">
+      <option name="closed" value="true" />
+      <created>1784701597347</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1784701597347</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="feat: add domain logic — coupon usage with validation" />
+    <MESSAGE value="feat: define domain repository" />
+    <MESSAGE value="feat: add coupon entity, repository, and Liquibase migration for coupons table" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: add coupon entity, repository, and Liquibase migration for coupons table" />
+  </component>
+</project>
