@@ -7,6 +7,7 @@ import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
 import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.domain.repository.CouponRepository;
+import com.rzodeczko.domain.repository.CouponUsageRepository;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,9 @@ class CouponServiceTest {
 
     @Mock
     private CouponRepository couponRepository;
+
+    @Mock
+    private CouponUsageRepository couponUsageRepository;
 
     @InjectMocks
     private CouponService couponService;
@@ -98,14 +102,14 @@ class CouponServiceTest {
 
         @Test
         void shouldPassWhenUserHasNotUsedCoupon() {
-            given(couponRepository.existsUsageByCodeAndUserId(CODE, "user-1")).willReturn(false);
+            given(couponUsageRepository.existsByCodeAndUserId(CODE, "user-1")).willReturn(false);
 
             assertDoesNotThrow(() -> couponService.validateUserNotUsed(CODE, "user-1"));
         }
 
         @Test
         void shouldThrowWhenUserAlreadyUsedCoupon() {
-            given(couponRepository.existsUsageByCodeAndUserId(CODE, "user-1")).willReturn(true);
+            given(couponUsageRepository.existsByCodeAndUserId(CODE, "user-1")).willReturn(true);
 
             assertThrows(CouponAlreadyUsedByUserException.class,
                     () -> couponService.validateUserNotUsed(CODE, "user-1"));
@@ -119,7 +123,7 @@ class CouponServiceTest {
         void shouldDelegateToRepository() {
             couponService.recordUsage(CODE, "user-1");
 
-            verify(couponRepository).saveUsage(CODE, "user-1");
+            verify(couponUsageRepository).save(CODE, "user-1");
         }
     }
 

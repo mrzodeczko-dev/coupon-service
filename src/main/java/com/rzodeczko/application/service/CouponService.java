@@ -7,6 +7,7 @@ import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
 import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.domain.repository.CouponRepository;
+import com.rzodeczko.domain.repository.CouponUsageRepository;
 
 /**
  * Application service providing domain-level coupon operations.
@@ -15,9 +16,11 @@ import com.rzodeczko.domain.repository.CouponRepository;
 public class CouponService {
 
     private final CouponRepository couponRepository;
+    private final CouponUsageRepository couponUsageRepository;
 
-    public CouponService(CouponRepository couponRepository) {
+    public CouponService(CouponRepository couponRepository, CouponUsageRepository couponUsageRepository) {
         this.couponRepository = couponRepository;
+        this.couponUsageRepository = couponUsageRepository;
     }
 
     public boolean existsByCode(CouponCode code) {
@@ -41,12 +44,12 @@ public class CouponService {
     }
 
     public void validateUserNotUsed(CouponCode code, String userId) {
-        if (couponRepository.existsUsageByCodeAndUserId(code, userId)) {
+        if (couponUsageRepository.existsByCodeAndUserId(code, userId)) {
             throw new CouponAlreadyUsedByUserException(code.value(), userId);
         }
     }
 
     public void recordUsage(CouponCode code, String userId) {
-        couponRepository.saveUsage(code, userId);
+        couponUsageRepository.save(code, userId);
     }
 }

@@ -24,7 +24,7 @@ class CouponMapperTest {
 
         @Test
         void shouldMapAllDomainFieldsToEntity() {
-            var coupon = Coupon.reconstitute(ID, new CouponCode("SUMMER"), NOW, 100, 5, new Country("PL"));
+            var coupon = Coupon.reconstitute(ID, new CouponCode("SUMMER"), NOW, 100, 5, new Country("PL"), 1L);
 
             var entity = mapper.toEntity(coupon);
 
@@ -34,6 +34,7 @@ class CouponMapperTest {
             assertEquals(100, entity.getMaxUsages());
             assertEquals(5, entity.getCurrentUsages());
             assertEquals("PL", entity.getCountry());
+            assertEquals(1L, entity.getVersion());
         }
     }
 
@@ -49,6 +50,7 @@ class CouponMapperTest {
                     .maxUsages(50)
                     .currentUsages(10)
                     .country("DE")
+                    .version(2L)
                     .build();
 
             var coupon = mapper.toDomain(entity);
@@ -59,6 +61,7 @@ class CouponMapperTest {
             assertEquals(50, coupon.getMaxUsages());
             assertEquals(10, coupon.getCurrentUsages());
             assertEquals(new Country("DE"), coupon.getCountry());
+            assertEquals(2L, coupon.getVersion());
         }
     }
 
@@ -67,7 +70,7 @@ class CouponMapperTest {
 
         @Test
         void shouldPreserveAllDataOnRoundTrip() {
-            var original = Coupon.reconstitute(ID, new CouponCode("PROMO"), NOW, 200, 42, new Country("US"));
+            var original = Coupon.reconstitute(ID, new CouponCode("PROMO"), NOW, 200, 42, new Country("US"), 3L);
 
             var entity = mapper.toEntity(original);
             var restored = mapper.toDomain(entity);
@@ -78,6 +81,7 @@ class CouponMapperTest {
             assertEquals(original.getMaxUsages(), restored.getMaxUsages());
             assertEquals(original.getCurrentUsages(), restored.getCurrentUsages());
             assertEquals(original.getCountry(), restored.getCountry());
+            assertEquals(original.getVersion(), restored.getVersion());
         }
     }
 }

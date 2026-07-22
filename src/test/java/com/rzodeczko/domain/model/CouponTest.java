@@ -107,7 +107,8 @@ class CouponTest {
 
             var restored = Coupon.reconstitute(
                     original.getId(), original.getCode(), original.getCreatedAt(),
-                    original.getMaxUsages(), original.getCurrentUsages(), original.getCountry()
+                    original.getMaxUsages(), original.getCurrentUsages(), original.getCountry(),
+                    original.getVersion()
             );
 
             assertEquals(original.getId(), restored.getId());

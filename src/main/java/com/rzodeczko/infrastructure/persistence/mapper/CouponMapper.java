@@ -17,6 +17,7 @@ public class CouponMapper {
                 .maxUsages(domain.getMaxUsages())
                 .currentUsages(domain.getCurrentUsages())
                 .country(domain.getCountry().code())
+                .version(domain.getVersion())
                 .build();
     }
 
@@ -27,7 +28,8 @@ public class CouponMapper {
                 entity.getCreatedAt(),
                 entity.getMaxUsages(),
                 entity.getCurrentUsages(),
-                new Country(entity.getCountry())
+                new Country(entity.getCountry()),
+                entity.getVersion()
         );
     }
 }

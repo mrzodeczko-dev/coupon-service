@@ -2,6 +2,7 @@ package com.rzodeczko.infrastructure.configuration;
 
 import com.rzodeczko.application.service.CouponService;
 import com.rzodeczko.domain.repository.CouponRepository;
+import com.rzodeczko.domain.repository.CouponUsageRepository;
 import org.springframework.boot.restclient.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,7 +27,8 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public CouponService couponService(CouponRepository couponRepository) {
-        return new CouponService(couponRepository);
+    public CouponService couponService(CouponRepository couponRepository,
+                                       CouponUsageRepository couponUsageRepository) {
+        return new CouponService(couponRepository, couponUsageRepository);
     }
 }

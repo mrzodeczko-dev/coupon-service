@@ -188,7 +188,7 @@ class CouponUseCaseImplTest {
             var code = new CouponCode("SUMMER25");
             var country = new Country("PL");
             var coupon = Coupon.reconstitute(
-                    java.util.UUID.randomUUID(), code, java.time.Instant.now(), 1, 1, country
+                    java.util.UUID.randomUUID(), code, java.time.Instant.now(), 1, 1, country, 0L
             );
 
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(country);
