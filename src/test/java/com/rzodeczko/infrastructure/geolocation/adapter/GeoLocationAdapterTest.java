@@ -2,7 +2,6 @@ package com.rzodeczko.infrastructure.geolocation.adapter;
 
 import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.domain.model.Country;
-import com.rzodeczko.infrastructure.geolocation.dto.GeoLocationResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -46,14 +45,20 @@ class GeoLocationAdapterTest {
 
         @Test
         void shouldThrowWhenApiReturnsFailStatus() {
-            mockServer.expect(requestTo("http://ip-api.com/json/invalid?fields=status,countryCode,message"))
+            mockServer.expect(requestTo("http://ip-api.com/json/1.2.3.4?fields=status,countryCode,message"))
                     .andRespond(withSuccess("""
                             {"status":"fail","message":"invalid query"}
                             """, MediaType.APPLICATION_JSON));
 
             assertThrows(GeoLocationException.class,
-                    () -> adapter.resolveCountry("invalid"));
+                    () -> adapter.resolveCountry("1.2.3.4"));
             mockServer.verify();
+        }
+
+        @Test
+        void shouldThrowWhenIpAddressFormatIsInvalid() {
+            assertThrows(GeoLocationException.class,
+                    () -> adapter.resolveCountry("invalid"));
         }
 
         @Test
