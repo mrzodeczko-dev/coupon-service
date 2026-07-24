@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/changes/001-create-coupons-table.yaml
   - include:
       file: db/changelog/changes/002-create-coupon-usages-table.yaml
+  - include:
+      file: db/changelog/changes/003-add-coupon-usages-code-fk.yaml

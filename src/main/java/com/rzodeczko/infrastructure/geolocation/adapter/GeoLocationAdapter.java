@@ -6,7 +6,6 @@ import com.rzodeczko.application.port.output.GeoLocationProvider;
 import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.infrastructure.geolocation.dto.GeoLocationResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -15,7 +14,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Objects;
 
-@Component
 @Slf4j
 public class GeoLocationAdapter implements GeoLocationProvider {
 

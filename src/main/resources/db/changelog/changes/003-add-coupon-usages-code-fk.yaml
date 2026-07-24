@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-coupon-usages-code-fk
+      author: mrzodeczko-dev
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: coupon_usages
+            baseColumnNames: code
+            referencedTableName: coupons
+            referencedColumnNames: code
+            constraintName: fk_coupon_usages_code
+            onDelete: CASCADE
+            onUpdate: CASCADE
