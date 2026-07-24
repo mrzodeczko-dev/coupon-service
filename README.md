@@ -131,6 +131,8 @@ Some concerns were left out to keep the scope focused on domain modeling, archit
 
 **`X-Forwarded-For` handling** - client IP resolution relies on Spring Boot's `forward-headers-strategy: native`, which delegates to Tomcat's `RemoteIpValve`. The valve processes the `X-Forwarded-For` header and sets `request.getRemoteAddr()` to the real client IP, so the controller does not parse the header manually. Trusted proxy IPs are configured via the `TRUSTED_PROXIES` environment variable (`server.tomcat.remoteip.internal-proxies`), defaulting to standard private ranges (10.x, 172.16-31.x, 192.168.x, 127.x, ::1). In a shared cluster this should be narrowed to the OpenShift router CIDR to prevent other pods from spoofing the header. The existing `NetworkPolicy` limits ingress to the router, which mitigates this risk at the network level.
 
+Integration tests for the usage endpoint use `@SpringBootTest(webEnvironment = RANDOM_PORT)` with `RestTestClient` instead of `MockMvc`. This is a deliberate choice: `MockMvc` uses a mock servlet environment that does not activate Tomcat's `RemoteIpValve`, so `X-Forwarded-For` processing would not be tested. `RANDOM_PORT` starts the real embedded Tomcat, which means the valve runs and the tests verify the full request pipeline including IP resolution. The trade-off is slower test execution, but it ensures the IP handling works end-to-end rather than being silently bypassed in tests.
+
 ## Tech Stack
 
 Java 25, Spring Boot 4.1, Spring Data JPA, Hibernate, MySQL 9.6, Liquibase, Resilience4j, Spring Retry, Lombok, SpringDoc OpenAPI, JaCoCo, JUnit 5, Mockito, Testcontainers, ArchUnit, Docker (multi-stage build), Kubernetes / OpenShift (AWS EBS gp3), GitHub Actions CI/CD.

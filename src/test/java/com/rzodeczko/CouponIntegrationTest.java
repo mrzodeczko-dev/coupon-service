@@ -6,21 +6,18 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.client.RestTestClient;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureRestTestClient
 @Testcontainers(disabledWithoutDocker = true)
 @Import(TestcontainersConfiguration.class)
 @Sql(statements = {"DELETE FROM coupon_usages", "DELETE FROM coupons"},
@@ -28,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CouponIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private RestTestClient restTestClient;
 
     @MockitoBean
     private GeoLocationProvider geoLocationProvider;
@@ -37,44 +34,50 @@ class CouponIntegrationTest {
     class CreateCoupon {
 
         @Test
-        void shouldCreateCouponAndPersist() throws Exception {
-            mockMvc.perform(post("/coupons")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"code":"INTEGRATION1","maxUsages":10,"country":"PL"}
-                                    """))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.id").isNotEmpty())
-                    .andExpect(jsonPath("$.code").value("INTEGRATION1"))
-                    .andExpect(jsonPath("$.maxUsages").value(10))
-                    .andExpect(jsonPath("$.country").value("PL"));
-        }
-
-        @Test
-        void shouldReturn409WhenDuplicateCode() throws Exception {
-            mockMvc.perform(post("/coupons")
+        void shouldCreateCouponAndPersist() {
+            restTestClient.post().uri("/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"code":"DUPLICATE","maxUsages":5,"country":"DE"}
-                            """));
-
-            mockMvc.perform(post("/coupons")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"code":"duplicate","maxUsages":5,"country":"DE"}
-                                    """))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.detail").value("Coupon with code 'DUPLICATE' already exists"));
+                    .body("""
+                            {"code":"INTEGRATION1","maxUsages":10,"country":"PL"}
+                            """)
+                    .exchange()
+                    .expectStatus().isCreated()
+                    .expectBody()
+                    .jsonPath("$.id").isNotEmpty()
+                    .jsonPath("$.code").isEqualTo("INTEGRATION1")
+                    .jsonPath("$.maxUsages").isEqualTo(10)
+                    .jsonPath("$.country").isEqualTo("PL");
         }
 
         @Test
-        void shouldReturn400WhenInvalidRequest() throws Exception {
-            mockMvc.perform(post("/coupons")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"code":"","maxUsages":0,"country":"INVALID"}
-                                    """))
-                    .andExpect(status().isBadRequest());
+        void shouldReturn409WhenDuplicateCode() {
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
+                            {"code":"DUPLICATE","maxUsages":5,"country":"DE"}
+                            """)
+                    .exchange();
+
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
+                            {"code":"duplicate","maxUsages":5,"country":"DE"}
+                            """)
+                    .exchange()
+                    .expectStatus().isEqualTo(409)
+                    .expectBody()
+                    .jsonPath("$.detail").isEqualTo("Coupon with code 'DUPLICATE' already exists");
+        }
+
+        @Test
+        void shouldReturn400WhenInvalidRequest() {
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
+                            {"code":"","maxUsages":0,"country":"INVALID"}
+                            """)
+                    .exchange()
+                    .expectStatus().isBadRequest();
         }
     }
 
@@ -82,160 +85,181 @@ class CouponIntegrationTest {
     class UseCoupon {
 
         @Test
-        void shouldUseCouponAndDecrementRemaining() throws Exception {
+        void shouldUseCouponAndDecrementRemaining() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            mockMvc.perform(post("/coupons")
+            restTestClient.post().uri("/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
+                    .body("""
                             {"code":"USE1","maxUsages":5,"country":"PL"}
-                            """));
-
-            mockMvc.perform(post("/coupons/USE1/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"user-1"}
-                                    """)
-                            .header("X-Forwarded-For", "89.64.55.1"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("USE1"))
-                    .andExpect(jsonPath("$.currentUsages").value(1))
-                    .andExpect(jsonPath("$.maxUsages").value(5))
-                    .andExpect(jsonPath("$.remainingUsages").value(4));
-        }
-
-        @Test
-        void shouldReturn404WhenCouponDoesNotExist() throws Exception {
-            given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
-
-            mockMvc.perform(post("/coupons/NONEXISTENT/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"user-1"}
-                                    """)
-                            .header("X-Forwarded-For", "89.64.55.1"))
-                    .andExpect(status().isNotFound());
-        }
-
-        @Test
-        void shouldReturn403WhenCountryMismatch() throws Exception {
-            given(geoLocationProvider.resolveCountry("8.8.8.8")).willReturn(new Country("US"));
-
-            mockMvc.perform(post("/coupons")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"code":"PLONLY","maxUsages":5,"country":"PL"}
-                            """));
-
-            mockMvc.perform(post("/coupons/PLONLY/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"user-1"}
-                                    """)
-                            .header("X-Forwarded-For", "8.8.8.8"))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        void shouldReturn409WhenCouponExhausted() throws Exception {
-            given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
-
-            mockMvc.perform(post("/coupons")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"code":"MAXONE","maxUsages":1,"country":"PL"}
-                            """));
-
-            mockMvc.perform(post("/coupons/MAXONE/usages")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"userId":"first-user"}
                             """)
-                    .header("X-Forwarded-For", "89.64.55.1"));
+                    .exchange();
 
-            mockMvc.perform(post("/coupons/MAXONE/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"second-user"}
-                                    """)
-                            .header("X-Forwarded-For", "89.64.55.1"))
-                    .andExpect(status().isConflict());
-        }
-
-        @Test
-        void shouldReturn409WhenSameUserUsesAgain() throws Exception {
-            given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
-
-            mockMvc.perform(post("/coupons")
+            restTestClient.post().uri("/coupons/USE1/usages")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"code":"ONEPERUSER","maxUsages":100,"country":"PL"}
-                            """));
-
-            mockMvc.perform(post("/coupons/ONEPERUSER/usages")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
                             {"userId":"user-1"}
                             """)
-                    .header("X-Forwarded-For", "89.64.55.1"));
-
-            mockMvc.perform(post("/coupons/ONEPERUSER/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"user-1"}
-                                    """)
-                            .header("X-Forwarded-For", "89.64.55.1"))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.detail").value("Coupon 'ONEPERUSER' has already been used by user 'user-1'"));
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.code").isEqualTo("USE1")
+                    .jsonPath("$.currentUsages").isEqualTo(1)
+                    .jsonPath("$.maxUsages").isEqualTo(5)
+                    .jsonPath("$.remainingUsages").isEqualTo(4);
         }
 
         @Test
-        void shouldAllowDifferentUsersToUseSameCoupon() throws Exception {
+        void shouldReturn404WhenCouponDoesNotExist() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            mockMvc.perform(post("/coupons")
+            restTestClient.post().uri("/coupons/NONEXISTENT/usages")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
+                            {"userId":"user-1"}
+                            """)
+                    .exchange()
+                    .expectStatus().isNotFound();
+        }
+
+        @Test
+        void shouldReturn403WhenCountryMismatch() {
+            given(geoLocationProvider.resolveCountry("8.8.8.8")).willReturn(new Country("US"));
+
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
+                            {"code":"PLONLY","maxUsages":5,"country":"PL"}
+                            """)
+                    .exchange();
+
+            restTestClient.post().uri("/coupons/PLONLY/usages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Forwarded-For", "8.8.8.8")
+                    .body("""
+                            {"userId":"user-1"}
+                            """)
+                    .exchange()
+                    .expectStatus().isForbidden();
+        }
+
+        @Test
+        void shouldReturn409WhenCouponExhausted() {
+            given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
+
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
+                            {"code":"MAXONE","maxUsages":1,"country":"PL"}
+                            """)
+                    .exchange();
+
+            restTestClient.post().uri("/coupons/MAXONE/usages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
+                            {"userId":"first-user"}
+                            """)
+                    .exchange();
+
+            restTestClient.post().uri("/coupons/MAXONE/usages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
+                            {"userId":"second-user"}
+                            """)
+                    .exchange()
+                    .expectStatus().isEqualTo(409);
+        }
+
+        @Test
+        void shouldReturn409WhenSameUserUsesAgain() {
+            given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
+
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
+                            {"code":"ONEPERUSER","maxUsages":100,"country":"PL"}
+                            """)
+                    .exchange();
+
+            restTestClient.post().uri("/coupons/ONEPERUSER/usages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
+                            {"userId":"user-1"}
+                            """)
+                    .exchange();
+
+            restTestClient.post().uri("/coupons/ONEPERUSER/usages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
+                            {"userId":"user-1"}
+                            """)
+                    .exchange()
+                    .expectStatus().isEqualTo(409)
+                    .expectBody()
+                    .jsonPath("$.detail").isEqualTo("Coupon 'ONEPERUSER' has already been used by user 'user-1'");
+        }
+
+        @Test
+        void shouldAllowDifferentUsersToUseSameCoupon() {
+            given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
+
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
                             {"code":"SHARED","maxUsages":100,"country":"PL"}
-                            """));
+                            """)
+                    .exchange();
 
-            mockMvc.perform(post("/coupons/SHARED/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"user-1"}
-                                    """)
-                            .header("X-Forwarded-For", "89.64.55.1"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.currentUsages").value(1));
+            restTestClient.post().uri("/coupons/SHARED/usages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
+                            {"userId":"user-1"}
+                            """)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.currentUsages").isEqualTo(1);
 
-            mockMvc.perform(post("/coupons/SHARED/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"user-2"}
-                                    """)
-                            .header("X-Forwarded-For", "89.64.55.1"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.currentUsages").value(2));
+            restTestClient.post().uri("/coupons/SHARED/usages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
+                            {"userId":"user-2"}
+                            """)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.currentUsages").isEqualTo(2);
         }
 
         @Test
-        void shouldTreatCouponCodeCaseInsensitively() throws Exception {
+        void shouldTreatCouponCodeCaseInsensitively() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            mockMvc.perform(post("/coupons")
+            restTestClient.post().uri("/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
+                    .body("""
                             {"code":"wiosna","maxUsages":10,"country":"PL"}
-                            """));
+                            """)
+                    .exchange();
 
-            mockMvc.perform(post("/coupons/WIOSNA/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"user-1"}
-                                    """)
-                            .header("X-Forwarded-For", "89.64.55.1"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("WIOSNA"));
+            restTestClient.post().uri("/coupons/WIOSNA/usages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Forwarded-For", "89.64.55.1")
+                    .body("""
+                            {"userId":"user-1"}
+                            """)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.code").isEqualTo("WIOSNA");
         }
     }
 }

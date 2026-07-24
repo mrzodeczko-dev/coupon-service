@@ -70,7 +70,7 @@ class CouponControllerTest {
                             .content("""
                                     {"userId":"user-1"}
                                     """)
-                            .header("X-Forwarded-For", "89.64.55.1"))
+                            .with(request -> { request.setRemoteAddr("89.64.55.1"); return request; }))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUMMER25"))
                     .andExpect(jsonPath("$.currentUsages").value(1))
@@ -83,27 +83,7 @@ class CouponControllerTest {
         }
 
         @Test
-        void shouldUseFirstIpFromXForwardedFor() throws Exception {
-            var coupon = Coupon.create(new CouponCode("SUMMER25"), 10, new Country("PL"));
-            coupon.use(new Country("PL"));
-
-            given(useCouponUseCase.use(any())).willReturn(coupon);
-
-            mockMvc.perform(post("/coupons/SUMMER25/usages")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"userId":"user-1"}
-                                    """)
-                            .header("X-Forwarded-For", "203.0.113.50, 70.41.3.18"))
-                    .andExpect(status().isOk());
-
-            then(useCouponUseCase).should().use(argThat(cmd ->
-                    cmd.ipAddress().equals("203.0.113.50")
-            ));
-        }
-
-        @Test
-        void shouldFallbackToRemoteAddrWhenNoXForwardedFor() throws Exception {
+        void shouldUseRemoteAddr() throws Exception {
             var coupon = Coupon.create(new CouponCode("SUMMER25"), 10, new Country("PL"));
             coupon.use(new Country("PL"));
 
