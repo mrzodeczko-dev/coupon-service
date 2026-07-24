@@ -144,7 +144,7 @@ jobs:
           sed 's|\${OPENSHIFT_ROUTE_HOST}|${{ vars.OPENSHIFT_ROUTE_HOST }}|g' \
             k8s/app-route.yaml | oc apply -f -
 
-          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+          IMAGE_TAG=$(echo "${{ github.event.workflow_run.head_sha || github.sha }}" | cut -c1-7)
           FULL_IMAGE="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
 
           sed "s|ghcr.io/mrzodeczko-dev/coupon-service:\${APP_VERSION}|${FULL_IMAGE}|g" \
