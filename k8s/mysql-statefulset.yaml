@@ -20,7 +20,6 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        fsGroup: 27
       containers:
         - name: mysql
           image: mysql:9.6.0
