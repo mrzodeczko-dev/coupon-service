@@ -11,7 +11,6 @@ import com.rzodeczko.presentation.dto.UseCouponRequestDto;
 import com.rzodeczko.presentation.dto.UseCouponResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -95,13 +93,9 @@ public class CouponController {
             @Parameter(description = "Coupon code", example = "SUMMER26")
             @PathVariable String code,
             @RequestBody @Valid UseCouponRequestDto useCouponRequest,
-            @Parameter(description = "Client IP address (overridden by reverse proxy in production)",
-                    in = ParameterIn.HEADER, example = "89.64.55.1",
-                    schema = @Schema(type = "string"))
-            @RequestHeader(value = "X-Forwarded-For", required = false) String xForwardedFor,
             HttpServletRequest request) {
 
-        String ipAddress = resolveClientIp(xForwardedFor, request);
+        String ipAddress = request.getRemoteAddr();
         log.info(">>> Received use coupon request. code={}, userId={}, ip={}", code, useCouponRequest.userId(), ipAddress);
 
         var command = new UseCouponCommand(code, useCouponRequest.userId(), ipAddress);
@@ -117,10 +111,4 @@ public class CouponController {
         return ResponseEntity.ok(response);
     }
 
-    private String resolveClientIp(String xForwardedFor, HttpServletRequest request) {
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
 }

@@ -129,7 +129,7 @@ Some concerns were left out to keep the scope focused on domain modeling, archit
 
 **Rate limiting** - a production deployment would include rate limiting (Bucket4j, API gateway throttling or similar) to protect both the service and the downstream geolocation API. This is an infrastructure concern orthogonal to the business logic this project demonstrates.
 
-**`X-Forwarded-For` spoofing protection** - the current implementation trusts the first IP in the header. In production this would be hardened with a trusted proxy list or handled at the reverse proxy / API gateway layer.
+**`X-Forwarded-For` handling** - client IP resolution relies on Spring Boot's `forward-headers-strategy: native`, which delegates to Tomcat's `RemoteIpValve`. The valve processes the `X-Forwarded-For` header and sets `request.getRemoteAddr()` to the real client IP, so the controller does not parse the header manually. Trusted proxy IPs are configured via the `TRUSTED_PROXIES` environment variable (`server.tomcat.remoteip.internal-proxies`), defaulting to standard private ranges (10.x, 172.16-31.x, 192.168.x, 127.x, ::1). In a shared cluster this should be narrowed to the OpenShift router CIDR to prevent other pods from spoofing the header. The existing `NetworkPolicy` limits ingress to the router, which mitigates this risk at the network level.
 
 ## Tech Stack
 
