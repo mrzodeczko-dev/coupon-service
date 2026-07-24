@@ -10,6 +10,9 @@ REST API for creating and redeeming discount coupons with country-based restrict
 - Circuit breaker + retry on the geolocation provider (Resilience4j)
 - Liquibase database migrations
 - OpenAPI / Swagger UI documentation
+- JaCoCo code coverage enforcement (80% minimum)
+- CI/CD pipeline: GitHub Actions → GHCR → OpenShift
+- Kubernetes manifests with security hardening and NetworkPolicy
 
 ## Architecture
 
@@ -84,7 +87,7 @@ The FK uses database-level cascading rather than JPA `orphanRemoval`. Adding `or
 
 The geolocation adapter is wrapped in `ResilientGeoLocationAdapter` (decorator pattern) that adds retry (3 attempts, 50ms backoff) on network errors and a circuit breaker (opens after 50% failure rate over 10 calls, 30s recovery window).
 
-This keeps resilience concerns out of the domain and application layers. The decorator delegates to the actual `GeoLocationAdapter`, both implement the same `GeoLocationProvider` port.
+This keeps resilience concerns out of the domain and application layers. The decorator delegates to the actual `GeoLocationAdapter`, both implement the same `GeoLocationProvider` port. Neither class is auto-discovered via `@Component` — both are wired explicitly through `@Bean` methods in `BeanConfiguration`, which creates `GeoLocationAdapter` as the delegate and exposes `ResilientGeoLocationAdapter` as the `GeoLocationProvider` bean. This makes the decoration chain visible in one place.
 
 ### Exception hierarchy for selective retry
 
@@ -108,6 +111,16 @@ Virtual threads are enabled (`spring.threads.virtual.enabled: true`) since this 
 
 `GeoLocationAdapter` validates that the IP is public (not loopback, site-local or link-local) before calling the external API, so we fail fast without wasting external resources.
 
+### CI/CD and Kubernetes
+
+The project uses a two-stage GitHub Actions pipeline. The CI workflow runs on every push and pull request to `master`: it compiles, runs all tests (unit + integration via Testcontainers), and enforces JaCoCo coverage at 80% minimum. The Deploy workflow triggers only after CI succeeds (`workflow_run`), builds a Docker image, pushes it to GHCR, and deploys to OpenShift.
+
+The deploy job checks out the exact commit that CI tested (`workflow_run.head_sha`) to prevent deploying an untested revision when fast pushes occur.
+
+Kubernetes manifests include security hardening: pods run as non-root with `allowPrivilegeEscalation: false`, all Linux capabilities dropped, and `readOnlyRootFilesystem` on the application container (with an `emptyDir` tmpfs for `/tmp`). A `NetworkPolicy` restricts MySQL ingress to only pods labeled `coupon-service`, and a `PodDisruptionBudget` ensures at least one replica stays available during voluntary disruptions.
+
+MySQL runs as a `StatefulSet` with a `gp3` EBS PersistentVolumeClaim. The `innodb-buffer-pool-size` is set to 128M (25% of the 512M memory limit), leaving headroom for connection buffers and OS overhead.
+
 ### Intentionally omitted
 
 Some concerns were left out to keep the scope focused on domain modeling, architecture and concurrency handling:
@@ -120,7 +133,7 @@ Some concerns were left out to keep the scope focused on domain modeling, archit
 
 ## Tech Stack
 
-Java 25, Spring Boot 4.1, Spring Data JPA, Hibernate, MySQL 9.6, Liquibase, Resilience4j, Spring Retry, Lombok, SpringDoc OpenAPI, JUnit 5, Mockito, Testcontainers, ArchUnit, Docker (multi-stage build), Kubernetes / OpenShift, GitHub Actions CI/CD.
+Java 25, Spring Boot 4.1, Spring Data JPA, Hibernate, MySQL 9.6, Liquibase, Resilience4j, Spring Retry, Lombok, SpringDoc OpenAPI, JaCoCo, JUnit 5, Mockito, Testcontainers, ArchUnit, Docker (multi-stage build), Kubernetes / OpenShift (AWS EBS gp3), GitHub Actions CI/CD.
 
 ## Running Locally
 
@@ -138,8 +151,10 @@ The service starts at `http://localhost:8080`. Swagger UI is available at `/swag
 
 ```bash
 ./mvnw test        # unit tests
-./mvnw verify      # unit + integration tests (requires Docker for Testcontainers)
+./mvnw verify      # unit + integration tests (requires Docker for Testcontainers) + JaCoCo coverage check (80% min)
 ```
+
+Coverage report is generated at `target/site/jacoco/index.html`.
 
 ## API
 
