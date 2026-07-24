@@ -6,6 +6,8 @@ import com.rzodeczko.infrastructure.geolocation.dto.GeoLocationResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -62,6 +64,15 @@ class GeoLocationAdapterTest {
             assertThrows(GeoLocationException.class,
                     () -> adapter.resolveCountry("8.8.8.8"));
             mockServer.verify();
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"127.0.0.1", "0:0:0:0:0:0:0:1", "10.0.0.1", "192.168.1.1", "172.16.0.1"})
+        void shouldRejectNonPublicIpAddresses(String privateIp) {
+            var exception = assertThrows(GeoLocationException.class,
+                    () -> adapter.resolveCountry(privateIp));
+
+            assertTrue(exception.getMessage().contains("non-public"));
         }
     }
 }

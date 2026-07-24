@@ -11,6 +11,8 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Objects;
 
 @Component
@@ -30,6 +32,7 @@ public class GeoLocationAdapter implements GeoLocationProvider {
     @Override
     public Country resolveCountry(String ipAddress) {
         log.debug("Resolving country for IP: {}", ipAddress);
+        validatePublicIp(ipAddress);
 
         try {
             var response = restClient.get()
@@ -60,6 +63,21 @@ public class GeoLocationAdapter implements GeoLocationProvider {
         } catch (RestClientException e) {
             throw new GeoLocationNetworkException(
                     "Rest client error resolving country for IP: %s".formatted(ipAddress), e
+            );
+        }
+    }
+
+    private void validatePublicIp(String ipAddress) {
+        try {
+            InetAddress address = InetAddress.getByName(ipAddress);
+            if (address.isLoopbackAddress() || address.isSiteLocalAddress() || address.isLinkLocalAddress()) {
+                throw new GeoLocationException(
+                        "Cannot resolve country for non-public IP address: %s".formatted(ipAddress)
+                );
+            }
+        } catch (UnknownHostException e) {
+            throw new GeoLocationException(
+                    "Invalid IP address format: %s".formatted(ipAddress), e
             );
         }
     }

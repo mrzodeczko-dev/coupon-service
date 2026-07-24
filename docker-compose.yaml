@@ -51,7 +51,6 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: on-failure:5
-    scale: 3
     ports:
       - "${COUPON_SERVICE_PORT}:8080"
     depends_on:
@@ -67,6 +66,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://coupon-mysql:3306/${COUPON_SERVICE_MYSQL_DB_NAME}?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: ${COUPON_SERVICE_MYSQL_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${COUPON_SERVICE_MYSQL_DB_PASSWORD}
+      SPRINGDOC_ENABLED: ${SPRINGDOC_ENABLED:-false}
     deploy:
       resources:
         limits:
