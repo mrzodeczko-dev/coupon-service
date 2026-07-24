@@ -3,9 +3,9 @@ spring:
     virtual:
       enabled: true
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/coupon_db}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       maximum-pool-size: 20
       connection-timeout: 2000
@@ -21,8 +21,30 @@ spring:
   liquibase:
     change-log: classpath:/db/changelog/db.changelog-master.yaml
 
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:false}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      geolocation:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        record-exceptions:
+          - com.rzodeczko.application.exception.GeoLocationNetworkException
+
 management:
   endpoints:
     web:
       exposure:
         include: health
+  health:
+    circuitbreakers:
+      enabled: true

@@ -1,6 +1,7 @@
 package com.rzodeczko.infrastructure.geolocation.adapter;
 
 import com.rzodeczko.application.exception.GeoLocationException;
+import com.rzodeczko.application.exception.GeoLocationNetworkException;
 import com.rzodeczko.application.port.output.GeoLocationProvider;
 import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.infrastructure.geolocation.dto.GeoLocationResponse;
@@ -53,11 +54,11 @@ public class GeoLocationAdapter implements GeoLocationProvider {
             return new Country(response.countryCode());
 
         } catch (ResourceAccessException e) {
-            throw new GeoLocationException(
+            throw new GeoLocationNetworkException(
                     "Timeout/connection error resolving country for IP: %s".formatted(ipAddress), e
             );
         } catch (RestClientException e) {
-            throw new GeoLocationException(
+            throw new GeoLocationNetworkException(
                     "Rest client error resolving country for IP: %s".formatted(ipAddress), e
             );
         }

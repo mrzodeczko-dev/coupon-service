@@ -1,4 +1,4 @@
-package com.rzodeczko.infrastructure.persistence.repository.adapter;
+package com.rzodeczko.infrastructure.persistence.adapter;
 
 import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
@@ -7,7 +7,6 @@ import com.rzodeczko.infrastructure.persistence.mapper.CouponMapper;
 import com.rzodeczko.infrastructure.persistence.repository.JpaCouponRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -19,14 +18,12 @@ public class JpaCouponRepositoryAdapter implements CouponRepository {
     private final CouponMapper couponMapper;
 
     @Override
-    @Transactional
     public Coupon save(Coupon coupon) {
         var entity = couponMapper.toEntity(coupon);
         return couponMapper.toDomain(jpaCouponRepository.saveAndFlush(entity));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Optional<Coupon> findByCode(CouponCode code) {
         return jpaCouponRepository
                 .findByCode(code.value())
@@ -34,7 +31,6 @@ public class JpaCouponRepositoryAdapter implements CouponRepository {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public boolean existsByCode(CouponCode code) {
         return jpaCouponRepository.existsByCode(code.value());
     }
