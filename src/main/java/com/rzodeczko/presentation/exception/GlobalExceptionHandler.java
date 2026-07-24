@@ -1,6 +1,7 @@
 package com.rzodeczko.presentation.exception;
 
 import com.rzodeczko.application.exception.GeoLocationException;
+import com.rzodeczko.application.exception.GeoLocationNetworkException;
 import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
 import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
 import com.rzodeczko.domain.exception.CouponConcurrentModificationException;
@@ -60,13 +61,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
     }
 
-    @ExceptionHandler(GeoLocationException.class)
-    public ProblemDetail handle(GeoLocationException e) {
-        log.error("Geolocation error: {}", e.getMessage());
+    @ExceptionHandler(GeoLocationNetworkException.class)
+    public ProblemDetail handle(GeoLocationNetworkException e) {
+        log.error("Geolocation network error: {}", e.getMessage());
         return ProblemDetail.forStatusAndDetail(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Geolocation service is temporarily unavailable"
         );
+    }
+
+    @ExceptionHandler(GeoLocationException.class)
+    public ProblemDetail handle(GeoLocationException e) {
+        log.warn("Geolocation error: {}", e.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
