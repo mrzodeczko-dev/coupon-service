@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coupon-service
+  namespace: eg58sj-dev
+  labels:
+    app.kubernetes.io/name: coupon-service
+    app.kubernetes.io/part-of: coupon-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: coupon-service

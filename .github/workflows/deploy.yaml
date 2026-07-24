@@ -1,0 +1,164 @@
+name: Build & Deploy to OpenShift
+
+on:
+  workflow_run:
+    workflows: [ "CI" ]
+    types: [ completed ]
+    branches: [ master ]
+  workflow_dispatch:
+
+env:
+  IMAGE_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  OPENSHIFT_NAMESPACE: eg58sj-dev
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # BUILD & PUSH
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build & Push Docker Image
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      image_full: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      # When triggered by workflow_run, checkout the exact commit CI tested.
+      # Default checkout would use HEAD of master, which may have advanced.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            BUILD_DATE=${{ github.event.workflow_run.created_at || github.event.repository.updated_at }}
+            GIT_COMMIT=${{ github.event.workflow_run.head_sha || github.sha }}
+
+  # ---------------------------------------------------------------------------
+  # DEPLOY
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to OpenShift
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install oc CLI
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          oc: "4"
+
+      # insecure-skip-tls-verify: trial cluster does not have a trusted CA cert.
+      # In production, use a proper CA bundle or remove this flag.
+      - name: Log in to OpenShift
+        run: |
+          oc login \
+            --token=${{ secrets.OPENSHIFT_TOKEN }} \
+            --server=${{ secrets.OPENSHIFT_SERVER }} \
+            --insecure-skip-tls-verify=true
+
+      - name: Apply secrets
+        run: |
+          sed \
+            -e 's|\${MYSQL_ROOT_PASSWORD}|${{ secrets.MYSQL_ROOT_PASSWORD }}|g' \
+            -e 's|\${MYSQL_USER}|${{ secrets.MYSQL_USER }}|g' \
+            -e 's|\${MYSQL_PASSWORD}|${{ secrets.MYSQL_PASSWORD }}|g' \
+            k8s/mysql-secret.yaml | oc apply -f -
+
+          sed \
+            -e 's|\${MYSQL_USER}|${{ secrets.MYSQL_USER }}|g' \
+            -e 's|\${MYSQL_PASSWORD}|${{ secrets.MYSQL_PASSWORD }}|g' \
+            k8s/app-secret.yaml | oc apply -f -
+
+      # GHCR_PAT is a Personal Access Token (not GITHUB_TOKEN) because
+      # the pull secret must authenticate from inside the cluster,
+      # where the Actions-scoped GITHUB_TOKEN is not available.
+      - name: Create GHCR pull secret
+        run: |
+          oc create secret docker-registry ghcr-pull-secret \
+            --docker-server=${{ env.IMAGE_REGISTRY }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GHCR_PAT }} \
+            --namespace=${{ env.OPENSHIFT_NAMESPACE }} \
+            --dry-run=client -o yaml | oc apply -f -
+
+      - name: Apply MySQL manifests
+        run: |
+          oc apply -f k8s/mysql-pvc.yaml
+          oc apply -f k8s/mysql-service.yaml
+          oc apply -f k8s/mysql-statefulset.yaml
+
+      - name: Wait for MySQL readiness
+        run: |
+          oc rollout status statefulset/mysql \
+            --namespace=${{ env.OPENSHIFT_NAMESPACE }} \
+            --timeout=180s
+
+      - name: Apply app manifests
+        run: |
+          oc apply -f k8s/app-configmap.yaml
+          oc apply -f k8s/app-service.yaml
+          oc apply -f k8s/app-pdb.yaml
+          oc apply -f k8s/app-network-policy.yaml
+
+          sed 's|\${OPENSHIFT_ROUTE_HOST}|${{ vars.OPENSHIFT_ROUTE_HOST }}|g' \
+            k8s/app-route.yaml | oc apply -f -
+
+          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+          FULL_IMAGE="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
+
+          sed "s|ghcr.io/mrzodeczko-dev/coupon-service:\${APP_VERSION}|${FULL_IMAGE}|g" \
+            k8s/app-deployment.yaml | oc apply -f -
+
+      - name: Wait for app rollout
+        run: |
+          oc rollout status deployment/coupon-service \
+            --namespace=${{ env.OPENSHIFT_NAMESPACE }} \
+            --timeout=300s
+
+      - name: Print route URL
+        run: |
+          ROUTE_URL=$(oc get route coupon-service \
+            --namespace=${{ env.OPENSHIFT_NAMESPACE }} \
+            -o jsonpath='{.spec.host}')
+          echo "Application deployed at: https://${ROUTE_URL}"

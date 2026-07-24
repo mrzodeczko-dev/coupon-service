@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-allow-coupon-service-only
+  namespace: eg58sj-dev
+  labels:
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/part-of: coupon-service
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mysql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: coupon-service
+      ports:
+        - protocol: TCP
+          port: 3306

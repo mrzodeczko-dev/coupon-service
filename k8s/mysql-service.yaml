@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: eg58sj-dev
+  labels:
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/part-of: coupon-service
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 3306
+      targetPort: mysql
+      name: mysql
+  selector:
+    app.kubernetes.io/name: mysql

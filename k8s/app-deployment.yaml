@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coupon-service
+  namespace: eg58sj-dev
+  labels:
+    app.kubernetes.io/name: coupon-service
+    app.kubernetes.io/part-of: coupon-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: coupon-service
+  # maxSurge: 0 due to tight CPU quota on trial cluster (3 CPU request limit).
+  # In production, use maxSurge: 1, maxUnavailable: 0 for zero-downtime deploys.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: coupon-service
+        app.kubernetes.io/part-of: coupon-service
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: coupon-service
+          image: ghcr.io/mrzodeczko-dev/coupon-service:${APP_VERSION}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ "ALL" ]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: coupon-service-config
+            - secretRef:
+                name: coupon-service-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            failureThreshold: 20
+            periodSeconds: 5
+      volumes:
+        - name: tmp
+          emptyDir: {}
