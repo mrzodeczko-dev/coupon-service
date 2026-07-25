@@ -21,9 +21,23 @@ class CountryTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"PL", "US", "DE", "GB", "FR", "JP"})
+    void shouldAcceptRealIsoCountries(String code) {
+        assertDoesNotThrow(() -> new Country(code));
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"P", "POL", "1A", "P!", ""})
     void shouldRejectInvalidFormat(String code) {
         assertThrows(IllegalArgumentException.class, () -> new Country(code));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"XX", "ZZ", "AA", "QQ", "OO"})
+    void shouldRejectSyntacticallyValidButUnknownIsoCode(String code) {
+        var ex = assertThrows(IllegalArgumentException.class, () -> new Country(code));
+        assertTrue(ex.getMessage().contains("not a recognized ISO 3166-1"),
+                "Expected ISO-lookup rejection message, got: " + ex.getMessage());
     }
 
     @Test

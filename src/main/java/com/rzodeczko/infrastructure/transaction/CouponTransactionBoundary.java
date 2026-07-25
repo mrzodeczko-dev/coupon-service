@@ -67,7 +67,14 @@ public class CouponTransactionBoundary {
     }
 
     private boolean isConstraint(DataIntegrityViolationException e, String constraintName) {
-        return e.getCause() instanceof ConstraintViolationException cve
-                && constraintName.equals(cve.getConstraintName());
+        if (!(e.getCause() instanceof ConstraintViolationException cve)) {
+            return false;
+        }
+        String actual = cve.getConstraintName();
+        if (actual == null) {
+            return false;
+        }
+        String bare = actual.substring(actual.lastIndexOf('.') + 1);
+        return bare.equals(constraintName);
     }
 }
