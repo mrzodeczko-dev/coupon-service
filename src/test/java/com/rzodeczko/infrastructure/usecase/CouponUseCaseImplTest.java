@@ -20,6 +20,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 
@@ -35,6 +39,8 @@ class CouponUseCaseImplTest {
     @InjectMocks
     private CouponUseCaseImpl couponUseCase;
 
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), ZoneOffset.UTC);
+
     @Nested
     class Create {
 
@@ -44,7 +50,7 @@ class CouponUseCaseImplTest {
             var command = new CreateCouponCommand("SUMMER25", 100, "PL");
             var code = new CouponCode("SUMMER25");
             var country = new Country("PL");
-            var savedCoupon = Coupon.create(code, 100, country);
+            var savedCoupon = Coupon.create(code, 100, country, FIXED_CLOCK);
 
             given(couponTransactionBoundary.save(code, 100, country)).willReturn(savedCoupon);
 
@@ -81,7 +87,7 @@ class CouponUseCaseImplTest {
             var command = new UseCouponCommand("SUMMER25", "user-1", "89.64.55.1");
             var code = new CouponCode("SUMMER25");
             var country = new Country("PL");
-            var coupon = Coupon.create(code, 10, country);
+            var coupon = Coupon.create(code, 10, country, FIXED_CLOCK);
             coupon.use(country);
 
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(country);

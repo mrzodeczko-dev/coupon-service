@@ -1,6 +1,7 @@
 package com.rzodeczko.presentation.exception;
 
 import com.rzodeczko.application.exception.GeoLocationException;
+import com.rzodeczko.application.exception.GeoLocationNetworkException;
 import com.rzodeczko.application.port.input.CreateCouponUseCase;
 import com.rzodeczko.application.port.input.UseCouponUseCase;
 import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
@@ -156,9 +157,9 @@ class GlobalExceptionHandlerTest {
     class InfrastructureErrors {
 
         @Test
-        void shouldReturn503WhenGeoLocationFails() throws Exception {
+        void shouldReturn503WhenGeoLocationNetworkFails() throws Exception {
             given(useCouponUseCase.use(any()))
-                    .willThrow(new GeoLocationException("Connection timeout"));
+                    .willThrow(new GeoLocationNetworkException("Connection timeout", new RuntimeException()));
 
             mockMvc.perform(post("/coupons/SUMMER25/usages")
                             .contentType(MediaType.APPLICATION_JSON)

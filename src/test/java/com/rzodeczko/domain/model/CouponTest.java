@@ -5,20 +5,25 @@ import com.rzodeczko.domain.exception.CouponExhaustedException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class CouponTest {
 
-    private static final CouponCode CODE = new CouponCode("SUMMER2025");
+    private static final CouponCode CODE = new CouponCode("SUMMER2026");
     private static final Country PL = new Country("PL");
     private static final Country DE = new Country("DE");
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-07-25T12:00:00Z"), ZoneOffset.UTC);
 
     @Nested
     class Create {
 
         @Test
         void shouldCreateCouponWithZeroUsages() {
-            var coupon = Coupon.create(CODE, 100, PL);
+            var coupon = Coupon.create(CODE, 100, PL, FIXED_CLOCK);
 
             assertEquals(CODE, coupon.getCode());
             assertEquals(0, coupon.getCurrentUsages());
@@ -29,13 +34,20 @@ class CouponTest {
         }
 
         @Test
+        void shouldUseProvidedClockForCreatedAt() {
+            var coupon = Coupon.create(CODE, 100, PL, FIXED_CLOCK);
+
+            assertEquals(Instant.parse("2026-07-25T12:00:00Z"), coupon.getCreatedAt());
+        }
+
+        @Test
         void shouldRejectZeroMaxUsages() {
-            assertThrows(IllegalArgumentException.class, () -> Coupon.create(CODE, 0, PL));
+            assertThrows(IllegalArgumentException.class, () -> Coupon.create(CODE, 0, PL, FIXED_CLOCK));
         }
 
         @Test
         void shouldRejectNegativeMaxUsages() {
-            assertThrows(IllegalArgumentException.class, () -> Coupon.create(CODE, -5, PL));
+            assertThrows(IllegalArgumentException.class, () -> Coupon.create(CODE, -5, PL, FIXED_CLOCK));
         }
     }
 
@@ -44,7 +56,7 @@ class CouponTest {
 
         @Test
         void shouldIncrementUsagesOnUse() {
-            var coupon = Coupon.create(CODE, 10, PL);
+            var coupon = Coupon.create(CODE, 10, PL, FIXED_CLOCK);
 
             coupon.use(PL);
 
@@ -54,7 +66,7 @@ class CouponTest {
 
         @Test
         void shouldAllowMultipleUsagesUpToLimit() {
-            var coupon = Coupon.create(CODE, 3, PL);
+            var coupon = Coupon.create(CODE, 3, PL, FIXED_CLOCK);
 
             coupon.use(PL);
             coupon.use(PL);
@@ -66,7 +78,7 @@ class CouponTest {
 
         @Test
         void shouldThrowWhenCouponExhausted() {
-            var coupon = Coupon.create(CODE, 1, PL);
+            var coupon = Coupon.create(CODE, 1, PL, FIXED_CLOCK);
             coupon.use(PL);
 
             assertThrows(CouponExhaustedException.class, () -> coupon.use(PL));
@@ -74,14 +86,14 @@ class CouponTest {
 
         @Test
         void shouldThrowWhenCountryDoesNotMatch() {
-            var coupon = Coupon.create(CODE, 10, PL);
+            var coupon = Coupon.create(CODE, 10, PL, FIXED_CLOCK);
 
             assertThrows(CouponCountryMismatchException.class, () -> coupon.use(DE));
         }
 
         @Test
         void shouldNotIncrementUsagesOnCountryMismatch() {
-            var coupon = Coupon.create(CODE, 10, PL);
+            var coupon = Coupon.create(CODE, 10, PL, FIXED_CLOCK);
 
             assertThrows(CouponCountryMismatchException.class, () -> coupon.use(DE));
             assertEquals(0, coupon.getCurrentUsages());
@@ -89,7 +101,7 @@ class CouponTest {
 
         @Test
         void shouldCheckExhaustedBeforeCountry() {
-            var coupon = Coupon.create(CODE, 1, PL);
+            var coupon = Coupon.create(CODE, 1, PL, FIXED_CLOCK);
             coupon.use(PL);
 
             assertThrows(CouponExhaustedException.class, () -> coupon.use(DE));
@@ -101,7 +113,7 @@ class CouponTest {
 
         @Test
         void shouldReconstituteCouponFromPersistedState() {
-            var original = Coupon.create(CODE, 5, PL);
+            var original = Coupon.create(CODE, 5, PL, FIXED_CLOCK);
             original.use(PL);
             original.use(PL);
 

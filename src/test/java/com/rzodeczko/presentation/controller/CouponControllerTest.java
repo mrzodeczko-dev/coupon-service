@@ -8,6 +8,10 @@ import com.rzodeczko.domain.model.CouponCode;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -30,12 +34,14 @@ class CouponControllerTest {
     @MockitoBean
     private UseCouponUseCase useCouponUseCase;
 
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), ZoneOffset.UTC);
+
     @Nested
     class CreateCouponIT {
 
         @Test
         void shouldReturn201WithCouponData() throws Exception {
-            var coupon = Coupon.create(new CouponCode("SUMMER25"), 100, new Country("PL"));
+            var coupon = Coupon.create(new CouponCode("SUMMER25"), 100, new Country("PL"), FIXED_CLOCK);
             given(createCouponUseCase.create(any())).willReturn(coupon);
 
             mockMvc.perform(post("/coupons")
@@ -60,7 +66,7 @@ class CouponControllerTest {
 
         @Test
         void shouldReturn200WithUsageData() throws Exception {
-            var coupon = Coupon.create(new CouponCode("SUMMER25"), 10, new Country("PL"));
+            var coupon = Coupon.create(new CouponCode("SUMMER25"), 10, new Country("PL"), FIXED_CLOCK);
             coupon.use(new Country("PL"));
 
             given(useCouponUseCase.use(any())).willReturn(coupon);
@@ -84,7 +90,7 @@ class CouponControllerTest {
 
         @Test
         void shouldUseRemoteAddr() throws Exception {
-            var coupon = Coupon.create(new CouponCode("SUMMER25"), 10, new Country("PL"));
+            var coupon = Coupon.create(new CouponCode("SUMMER25"), 10, new Country("PL"), FIXED_CLOCK);
             coupon.use(new Country("PL"));
 
             given(useCouponUseCase.use(any())).willReturn(coupon);

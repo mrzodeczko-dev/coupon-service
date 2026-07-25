@@ -13,6 +13,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.net.http.HttpClient;
+import java.time.Clock;
 import java.time.Duration;
 
 @Configuration
@@ -41,8 +42,14 @@ public class BeanConfiguration {
     }
 
     @Bean
+    public Clock clock() {
+        return Clock.systemUTC();
+    }
+
+    @Bean
     public CouponService couponService(CouponRepository couponRepository,
-                                       CouponUsageRepository couponUsageRepository) {
-        return new CouponService(couponRepository, couponUsageRepository);
+                                       CouponUsageRepository couponUsageRepository,
+                                       Clock clock) {
+        return new CouponService(couponRepository, couponUsageRepository, clock);
     }
 }

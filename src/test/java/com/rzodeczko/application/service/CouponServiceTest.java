@@ -8,13 +8,16 @@ import com.rzodeczko.domain.model.CouponCode;
 import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.domain.repository.CouponRepository;
 import com.rzodeczko.domain.repository.CouponUsageRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,8 +33,14 @@ class CouponServiceTest {
     @Mock
     private CouponUsageRepository couponUsageRepository;
 
-    @InjectMocks
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), ZoneOffset.UTC);
+
     private CouponService couponService;
+
+    @BeforeEach
+    void setUp() {
+        couponService = new CouponService(couponRepository, couponUsageRepository, FIXED_CLOCK);
+    }
 
     private static final CouponCode CODE = new CouponCode("SUMMER");
     private static final Country PL = new Country("PL");
@@ -65,7 +74,7 @@ class CouponServiceTest {
 
         @Test
         void shouldReturnCouponWhenFound() {
-            var coupon = Coupon.create(CODE, 10, PL);
+            var coupon = Coupon.create(CODE, 10, PL, FIXED_CLOCK);
             given(couponRepository.findByCode(CODE)).willReturn(Optional.of(coupon));
 
             var result = couponService.findByCode(CODE);
@@ -87,7 +96,7 @@ class CouponServiceTest {
 
         @Test
         void shouldDelegateToRepository() {
-            var coupon = Coupon.create(CODE, 10, PL);
+            var coupon = Coupon.create(CODE, 10, PL, FIXED_CLOCK);
             given(couponRepository.save(coupon)).willReturn(coupon);
 
             var result = couponService.save(coupon);

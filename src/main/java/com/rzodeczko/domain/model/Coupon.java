@@ -3,6 +3,7 @@ package com.rzodeczko.domain.model;
 import com.rzodeczko.domain.exception.CouponCountryMismatchException;
 import com.rzodeczko.domain.exception.CouponExhaustedException;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -31,11 +32,12 @@ public class Coupon {
     /**
      * Factory method for creating a brand-new coupon.
      */
-    public static Coupon create(CouponCode code, int maxUsages, Country country) {
+    public static Coupon create(CouponCode code, int maxUsages, Country country, Clock clock) {
         if (maxUsages <= 0) {
             throw new IllegalArgumentException("Max usages must be a positive number, got: " + maxUsages);
         }
-        return new Coupon(UUID.randomUUID(), code, Instant.now(), maxUsages, 0, country, null);
+        Objects.requireNonNull(clock, "clock must not be null");
+        return new Coupon(UUID.randomUUID(), code, Instant.now(clock), maxUsages, 0, country, null);
     }
 
     /**

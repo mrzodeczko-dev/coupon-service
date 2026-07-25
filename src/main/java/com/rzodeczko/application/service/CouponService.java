@@ -9,6 +9,8 @@ import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.domain.repository.CouponRepository;
 import com.rzodeczko.domain.repository.CouponUsageRepository;
 
+import java.time.Clock;
+
 /**
  * Application service providing domain-level coupon operations.
  * Pure Java - no framework dependencies.
@@ -17,10 +19,13 @@ public class CouponService {
 
     private final CouponRepository couponRepository;
     private final CouponUsageRepository couponUsageRepository;
+    private final Clock clock;
 
-    public CouponService(CouponRepository couponRepository, CouponUsageRepository couponUsageRepository) {
+    public CouponService(CouponRepository couponRepository, CouponUsageRepository couponUsageRepository,
+                         Clock clock) {
         this.couponRepository = couponRepository;
         this.couponUsageRepository = couponUsageRepository;
+        this.clock = clock;
     }
 
     public boolean existsByCode(CouponCode code) {
@@ -31,7 +36,7 @@ public class CouponService {
         if (couponRepository.existsByCode(code)) {
             throw new CouponAlreadyExistsException(code.value());
         }
-        return Coupon.create(code, maxUsages, country);
+        return Coupon.create(code, maxUsages, country, clock);
     }
 
     public Coupon save(Coupon coupon) {
