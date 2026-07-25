@@ -1,6 +1,7 @@
 package com.rzodeczko.infrastructure.transaction;
 
 import com.rzodeczko.application.service.CouponService;
+import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
 import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
 import com.rzodeczko.domain.exception.CouponConcurrentModificationException;
 import com.rzodeczko.domain.model.Country;
@@ -51,6 +52,10 @@ public class CouponTransactionBoundary {
     @Transactional
     public Coupon save(CouponCode code, int maxUsages, Country country) {
         Coupon toSave = couponService.buildCoupon(code, maxUsages, country);
-        return couponService.save(toSave);
+        try {
+            return couponService.save(toSave);
+        } catch (DataIntegrityViolationException e) {
+            throw new CouponAlreadyExistsException(code.value());
+        }
     }
 }
