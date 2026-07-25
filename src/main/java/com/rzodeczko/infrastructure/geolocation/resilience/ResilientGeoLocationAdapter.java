@@ -1,7 +1,7 @@
 package com.rzodeczko.infrastructure.geolocation.resilience;
 
-import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.application.exception.GeoLocationNetworkException;
+import com.rzodeczko.application.exception.GeoLocationUnavailableException;
 import com.rzodeczko.application.port.output.GeoLocationProvider;
 import com.rzodeczko.domain.model.Country;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
@@ -26,7 +26,7 @@ public class ResilientGeoLocationAdapter implements GeoLocationProvider {
     }
 
     Country fallback(String ipAddress, CallNotPermittedException e) {
-        throw new GeoLocationException(
+        throw new GeoLocationUnavailableException(
                 "Geolocation service circuit breaker is open, request rejected for IP: %s".formatted(ipAddress)
         );
     }

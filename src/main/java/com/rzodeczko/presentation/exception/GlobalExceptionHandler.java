@@ -2,6 +2,7 @@ package com.rzodeczko.presentation.exception;
 
 import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.application.exception.GeoLocationNetworkException;
+import com.rzodeczko.application.exception.GeoLocationUnavailableException;
 import com.rzodeczko.domain.exception.*;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -69,6 +70,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handle(CouponConcurrentModificationException e) {
         log.warn("Concurrent modification: {}", e.getMessage());
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(GeoLocationUnavailableException.class)
+    public ProblemDetail handle(GeoLocationUnavailableException e) {
+        log.error("Geolocation service unavailable: {}", e.getMessage());
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Geolocation service is temporarily unavailable"
+        );
     }
 
     @ExceptionHandler(GeoLocationNetworkException.class)
