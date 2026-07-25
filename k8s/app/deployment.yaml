@@ -7,17 +7,15 @@ metadata:
     app.kubernetes.io/name: coupon-service
     app.kubernetes.io/part-of: coupon-service
 spec:
-  replicas: 2
+  # replicas managed by HPA (see hpa.yaml)
   selector:
     matchLabels:
       app.kubernetes.io/name: coupon-service
-  # maxSurge: 0 due to tight CPU quota on trial cluster (3 CPU request limit).
-  # In production, use maxSurge: 1, maxUnavailable: 0 for zero-downtime deploys.
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 0
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:

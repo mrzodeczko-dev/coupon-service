@@ -103,12 +103,12 @@ jobs:
             -e 's|\${MYSQL_ROOT_PASSWORD}|${{ secrets.MYSQL_ROOT_PASSWORD }}|g' \
             -e 's|\${MYSQL_USER}|${{ secrets.MYSQL_USER }}|g' \
             -e 's|\${MYSQL_PASSWORD}|${{ secrets.MYSQL_PASSWORD }}|g' \
-            k8s/mysql-secret.yaml | oc apply -f -
+            k8s/secrets/mysql-secret.yaml | oc apply -f -
 
           sed \
             -e 's|\${MYSQL_USER}|${{ secrets.MYSQL_USER }}|g' \
             -e 's|\${MYSQL_PASSWORD}|${{ secrets.MYSQL_PASSWORD }}|g' \
-            k8s/app-secret.yaml | oc apply -f -
+            k8s/secrets/app-secret.yaml | oc apply -f -
 
       # GHCR_PAT is a Personal Access Token (not GITHUB_TOKEN) because
       # the pull secret must authenticate from inside the cluster,
@@ -123,10 +123,7 @@ jobs:
             --dry-run=client -o yaml | oc apply -f -
 
       - name: Apply MySQL manifests
-        run: |
-          oc apply -f k8s/mysql-pvc.yaml
-          oc apply -f k8s/mysql-service.yaml
-          oc apply -f k8s/mysql-statefulset.yaml
+        run: oc apply -f k8s/mysql/
 
       - name: Wait for MySQL readiness
         run: |
@@ -136,19 +133,20 @@ jobs:
 
       - name: Apply app manifests
         run: |
-          oc apply -f k8s/app-configmap.yaml
-          oc apply -f k8s/app-service.yaml
-          oc apply -f k8s/app-pdb.yaml
-          oc apply -f k8s/app-network-policy.yaml
-
-          sed 's|\${OPENSHIFT_ROUTE_HOST}|${{ vars.OPENSHIFT_ROUTE_HOST }}|g' \
-            k8s/app-route.yaml | oc apply -f -
-
           IMAGE_TAG=$(echo "${{ github.event.workflow_run.head_sha || github.sha }}" | cut -c1-7)
           FULL_IMAGE="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
 
+          sed 's|\${OPENSHIFT_ROUTE_HOST}|${{ vars.OPENSHIFT_ROUTE_HOST }}|g' \
+            k8s/app/route.yaml | oc apply -f -
+
           sed "s|ghcr.io/mrzodeczko-dev/coupon-service:\${APP_VERSION}|${FULL_IMAGE}|g" \
-            k8s/app-deployment.yaml | oc apply -f -
+            k8s/app/deployment.yaml | oc apply -f -
+
+          oc apply \
+            -f k8s/app/configmap.yaml \
+            -f k8s/app/service.yaml \
+            -f k8s/app/pdb.yaml \
+            -f k8s/app/network-policy.yaml
 
       - name: Wait for app rollout
         run: |
