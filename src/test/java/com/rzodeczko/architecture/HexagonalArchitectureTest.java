@@ -3,6 +3,7 @@ package com.rzodeczko.architecture;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.library.Architectures;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -231,6 +232,126 @@ class HexagonalArchitectureTest {
             classes()
                     .that().resideInAPackage("..application.exception..")
                     .should().beAssignableTo(RuntimeException.class)
+                    .check(classes);
+        }
+    }
+
+    @Nested
+    @DisplayName("Layer dependency rules")
+    class LayerDependencyRules {
+
+        @Test
+        @DisplayName("Domain must not depend on application, infrastructure or presentation")
+        void domainMustNotDependOnOuterLayers() {
+            noClasses()
+                    .that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..application..",
+                            "..infrastructure..",
+                            "..presentation.."
+                    )
+                    .because("domain must remain the innermost layer with no outward dependencies")
+                    .check(classes);
+        }
+
+        @Test
+        @DisplayName("Application must not depend on infrastructure or presentation")
+        void applicationMustNotDependOnOuterLayers() {
+            noClasses()
+                    .that().resideInAPackage("..application..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..infrastructure..",
+                            "..presentation.."
+                    )
+                    .because("application defines ports; adapters and transport are outer layers")
+                    .check(classes);
+        }
+
+        @Test
+        @DisplayName("Presentation must not depend on infrastructure")
+        void presentationMustNotDependOnInfrastructure() {
+            noClasses()
+                    .that().resideInAPackage("..presentation..")
+                    .should().dependOnClassesThat().resideInAPackage("..infrastructure..")
+                    .because("presentation should talk to application ports, not to infrastructure adapters")
+                    .check(classes);
+        }
+
+        @Test
+        @DisplayName("Domain must not depend on Spring")
+        void domainMustNotDependOnSpring() {
+            noClasses()
+                    .that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("org.springframework..")
+                    .check(classes);
+        }
+
+        @Test
+        @DisplayName("Domain must not depend on JPA / Jakarta persistence")
+        void domainMustNotDependOnJpa() {
+            noClasses()
+                    .that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "jakarta.persistence..",
+                            "org.hibernate.."
+                    )
+                    .check(classes);
+        }
+
+        @Test
+        @DisplayName("Domain must not depend on Jackson / Swagger / Web APIs")
+        void domainMustNotDependOnWebOrSerialization() {
+            noClasses()
+                    .that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "com.fasterxml.jackson..",
+                            "io.swagger..",
+                            "jakarta.servlet..",
+                            "jakarta.validation.."
+                    )
+                    .check(classes);
+        }
+
+        @Test
+        @DisplayName("Layered architecture: presentation → application → domain, infrastructure implements application ports")
+        void layeredArchitecture() {
+            Architectures.layeredArchitecture()
+                    .consideringAllDependencies()
+                    .layer("Domain").definedBy("..domain..")
+                    .layer("Application").definedBy("..application..")
+                    .layer("Infrastructure").definedBy("..infrastructure..")
+                    .layer("Presentation").definedBy("..presentation..")
+
+                    .whereLayer("Presentation").mayNotBeAccessedByAnyLayer()
+                    .whereLayer("Infrastructure").mayNotBeAccessedByAnyLayer()
+                    .whereLayer("Application").mayOnlyBeAccessedByLayers("Presentation", "Infrastructure")
+                    .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infrastructure", "Presentation")
+                    .check(classes);
+        }
+    }
+
+    @Nested
+    @DisplayName("Package placement rules")
+    class PackagePlacementRules {
+
+        @Test
+        @DisplayName("JPA entities must live only in infrastructure.persistence.entity")
+        void jpaEntitiesOnlyInPersistenceEntityPackage() {
+            classes()
+                    .that().areAnnotatedWith(jakarta.persistence.Entity.class)
+                    .should().resideInAPackage("..infrastructure.persistence.entity..")
+                    .check(classes);
+        }
+
+        @Test
+        @DisplayName("Spring stereotypes may not appear in application or domain")
+        void springStereotypesOnlyOutsideCore() {
+            noClasses()
+                    .that().resideInAnyPackage("..domain..", "..application..")
+                    .should().beAnnotatedWith(org.springframework.stereotype.Component.class)
+                    .orShould().beAnnotatedWith(org.springframework.stereotype.Service.class)
+                    .orShould().beAnnotatedWith(org.springframework.stereotype.Repository.class)
+                    .orShould().beAnnotatedWith(org.springframework.web.bind.annotation.RestController.class)
                     .check(classes);
         }
     }

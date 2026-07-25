@@ -5,19 +5,13 @@ import com.rzodeczko.application.port.input.CreateCouponUseCase;
 import com.rzodeczko.application.port.input.UseCouponCommand;
 import com.rzodeczko.application.port.input.UseCouponUseCase;
 import com.rzodeczko.application.port.output.GeoLocationProvider;
-import com.rzodeczko.application.service.CouponService;
-import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
-import com.rzodeczko.domain.exception.CouponConcurrentModificationException;
 import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
 import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.infrastructure.transaction.CouponTransactionBoundary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor

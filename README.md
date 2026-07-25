@@ -10,6 +10,9 @@ REST API for creating and redeeming discount coupons with country-based restrict
 - Circuit breaker + retry on the geolocation provider (Resilience4j)
 - Liquibase database migrations
 - OpenAPI / Swagger UI documentation
+- Request-level correlation IDs propagated through MDC and echoed on responses
+- Field-level validation errors surfaced through RFC 7807 ProblemDetail
+- ArchUnit tests enforcing hexagonal layer boundaries
 - JaCoCo code coverage enforcement (80% minimum)
 - CI/CD pipeline: GitHub Actions → GHCR → OpenShift
 - Kubernetes manifests with security hardening and NetworkPolicy
@@ -99,6 +102,32 @@ Same applies to the circuit breaker: only `GeoLocationNetworkException` is recor
 
 `CreateCouponUseCase` and `UseCouponUseCase` are separate interfaces even though `CouponUseCaseImpl` implements both. The controller injects only the port it needs. Any future consumer could depend on just one without pulling in the other.
 
+### Correlation IDs and structured logging
+
+`CorrelationIdFilter` runs first in the servlet chain (order `HIGHEST_PRECEDENCE`, using `OncePerRequestFilter`). It reads the `X-Request-Id` header from the incoming request or generates a fresh UUID when absent, places it into SLF4J MDC under key `requestId`, and echoes it back on the response so upstream systems can join their logs to ours. MDC is cleared in a `finally` block, which keeps things correct with virtual threads and any pool that recycles carrier threads.
+
+The Spring Boot log pattern is customized via `logging.pattern.correlation` — a dedicated slot in the default Logback layout that Spring Boot exposes for exactly this purpose. Every log line (application, framework or third-party) carries `[requestId=...]` without touching individual log statements and without a custom `logback-spring.xml` — the built-in `defaults.xml` interpolates `LOG_CORRELATION_PATTERN` from the property.
+
+### Request validation and error responses
+
+DTOs use Bean Validation (`@NotBlank`, `@Size(max = 100)` on `code`, `@Min(1) @Max(1_000_000)` on `maxUsages`, `@Pattern` on `country`). Constraint violations produce `MethodArgumentNotValidException`, which `GlobalExceptionHandler.handleMethodArgumentNotValid` overrides to build an RFC 7807 `ProblemDetail` with:
+
+- `status: 400`
+- `detail` joining every field error as `"field: message"`
+- an `errors[]` array with the same messages, one per field
+
+Domain and application exceptions map to specific HTTP statuses (404, 409, 403, 503) through dedicated `@ExceptionHandler` methods, all producing `ProblemDetail`.
+
+### Enforced architecture with ArchUnit
+
+`HexagonalArchitectureTest` runs at every build and covers three groups of rules:
+
+- **Layer dependencies**: `domain` may not depend on `application`, `infrastructure` or `presentation`; `application` may not depend on `infrastructure` or `presentation`; `presentation` may not depend on `infrastructure`. A `layeredArchitecture()` rule enforces the whole graph in one place.
+- **Framework isolation**: `domain` must not depend on Spring, JPA, Hibernate, Jackson, Swagger, servlet API or Jakarta Validation; Spring stereotypes (`@Component`, `@Service`, `@Repository`, `@RestController`) may not appear in `domain` or `application`.
+- **Package placement**: `@Entity`-annotated classes must live only in `..infrastructure.persistence.entity..`; naming conventions for controllers, services, adapters, entities, mappers, DTOs, exceptions and configuration classes.
+
+The architecture is not just documented — a wrong dependency fails the build.
+
 ### Other notes
 
 `open-in-view` is set to `false` to disable the Open Session in View anti-pattern. Lazy loading outside a transaction fails immediately instead of silently causing N+1 queries.
@@ -160,13 +189,31 @@ Coverage report is generated at `target/site/jacoco/index.html`.
 
 ## API
 
+Every response includes an `X-Request-Id` header — either the one the caller sent or a fresh UUID minted by `CorrelationIdFilter`. The same ID appears on every log line produced during the request.
+
 ### Create Coupon
 
 ```
 POST /coupons
 Content-Type: application/json
+X-Request-Id: 8f1e...            # optional; generated if absent
 
 {"code": "SUMMER25", "maxUsages": 100, "country": "PL"}
+```
+
+Validation errors return `400` with an RFC 7807 body:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "code: Coupon code must be at most 100 characters; maxUsages: Max usages must not exceed 1000000",
+  "errors": [
+    "code: Coupon code must be at most 100 characters",
+    "maxUsages: Max usages must not exceed 1000000"
+  ]
+}
 ```
 
 ### Use Coupon
@@ -175,6 +222,7 @@ Content-Type: application/json
 POST /coupons/{code}/usages
 Content-Type: application/json
 X-Forwarded-For: 89.64.55.1
+X-Request-Id: 8f1e...            # optional
 
 {"userId": "user-123"}
 ```

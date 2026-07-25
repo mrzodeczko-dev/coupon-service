@@ -25,7 +25,7 @@ public class ResilientGeoLocationAdapter implements GeoLocationProvider {
         return delegate.resolveCountry(ipAddress);
     }
 
-    private Country fallback(String ipAddress, CallNotPermittedException e) {
+    Country fallback(String ipAddress, CallNotPermittedException e) {
         throw new GeoLocationException(
                 "Geolocation service circuit breaker is open, request rejected for IP: %s".formatted(ipAddress)
         );

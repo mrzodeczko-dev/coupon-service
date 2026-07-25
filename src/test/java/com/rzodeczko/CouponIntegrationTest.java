@@ -262,4 +262,33 @@ class CouponIntegrationTest {
                     .jsonPath("$.code").isEqualTo("WIOSNA");
         }
     }
+
+    @Nested
+    class CorrelationId {
+
+        @Test
+        void shouldEchoIncomingRequestIdInResponse() {
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Request-Id", "test-req-999")
+                    .body("""
+                            {"code":"CID1","maxUsages":1,"country":"PL"}
+                            """)
+                    .exchange()
+                    .expectStatus().isCreated()
+                    .expectHeader().valueEquals("X-Request-Id", "test-req-999");
+        }
+
+        @Test
+        void shouldGenerateRequestIdWhenAbsent() {
+            restTestClient.post().uri("/coupons")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""
+                            {"code":"CID2","maxUsages":1,"country":"PL"}
+                            """)
+                    .exchange()
+                    .expectStatus().isCreated()
+                    .expectHeader().exists("X-Request-Id");
+        }
+    }
 }

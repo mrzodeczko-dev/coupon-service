@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +31,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/coupons")
 @RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Coupons", description = "Endpoints for creating and using discount coupons")
 public class CouponController {
 
@@ -51,8 +49,6 @@ public class CouponController {
     @PostMapping
     public ResponseEntity<CreateCouponResponseDto> createCoupon(
             @RequestBody @Valid CreateCouponRequestDto request) {
-
-        log.info(">>> Received create coupon request. code={}", request.code());
 
         var command = new CreateCouponCommand(
                 request.code(),
@@ -96,7 +92,6 @@ public class CouponController {
             HttpServletRequest request) {
 
         String ipAddress = request.getRemoteAddr();
-        log.info(">>> Received use coupon request. code={}, userId={}, ip={}", code, useCouponRequest.userId(), ipAddress);
 
         var command = new UseCouponCommand(code, useCouponRequest.userId(), ipAddress);
         Coupon coupon = useCouponUseCase.use(command);

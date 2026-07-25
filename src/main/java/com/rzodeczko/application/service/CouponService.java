@@ -28,10 +28,6 @@ public class CouponService {
         this.clock = clock;
     }
 
-    public boolean existsByCode(CouponCode code) {
-        return couponRepository.existsByCode(code);
-    }
-
     public Coupon buildCoupon(CouponCode code, int maxUsages, Country country) {
         if (couponRepository.existsByCode(code)) {
             throw new CouponAlreadyExistsException(code.value());

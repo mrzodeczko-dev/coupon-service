@@ -136,21 +136,4 @@ class CouponServiceTest {
         }
     }
 
-    @Nested
-    class ExistsByCode {
-
-        @Test
-        void shouldReturnTrueWhenExists() {
-            given(couponRepository.existsByCode(CODE)).willReturn(true);
-
-            assertTrue(couponService.existsByCode(CODE));
-        }
-
-        @Test
-        void shouldReturnFalseWhenNotExists() {
-            given(couponRepository.existsByCode(CODE)).willReturn(false);
-
-            assertFalse(couponService.existsByCode(CODE));
-        }
-    }
 }

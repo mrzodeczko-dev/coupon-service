@@ -59,6 +59,35 @@ class GlobalExceptionHandlerTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status").value(400));
         }
+
+        @Test
+        void shouldReturn400WhenMaxUsagesExceedsUpperLimit() throws Exception {
+            mockMvc.perform(post("/coupons")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"code":"SUMMER25","maxUsages":1000001,"country":"PL"}
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("maxUsages")))
+                    .andExpect(jsonPath("$.errors").isArray())
+                    .andExpect(jsonPath("$.errors", org.hamcrest.Matchers.hasSize(1)));
+        }
+
+        @Test
+        void shouldReturn400WhenCodeExceedsMaxSize() throws Exception {
+            String longCode = "A".repeat(101);
+            mockMvc.perform(post("/coupons")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"code":"%s","maxUsages":10,"country":"PL"}
+                                    """.formatted(longCode)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("code")))
+                    .andExpect(jsonPath("$.errors").isArray())
+                    .andExpect(jsonPath("$.errors", org.hamcrest.Matchers.hasSize(1)));
+        }
     }
 
     @Nested
