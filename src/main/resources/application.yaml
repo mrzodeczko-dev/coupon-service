@@ -2,6 +2,12 @@ server:
   forward-headers-strategy: native
 
 spring:
+  mvc:
+    apiversion:
+      default: "1"
+      detect-supported: true
+      use:
+        path-segment: 0
   threads:
     virtual:
       enabled: true
@@ -59,9 +65,4 @@ management:
 
 logging:
   pattern:
-    # Slot dedicated to correlation info in Spring Boot's default log pattern.
-    # CorrelationIdFilter puts the ID under MDC key `requestId`; this pattern renders it
-    # on every log line without touching the default level/date/logger layout. No
-    # logback-spring.xml required — Spring Boot's built-in Logback config already
-    # interpolates LOG_CORRELATION_PATTERN from this property.
     correlation: " [requestId=%X{requestId:-}]"

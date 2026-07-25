@@ -142,7 +142,7 @@ class CouponConcurrencyIntegrationTest {
     }
 
     private HttpStatusCode createCouponRaw(String code, int maxUsages, String country) {
-        return restTestClient.post().uri("/coupons")
+        return restTestClient.post().uri("/v1/coupons")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(("""
                         {"code":"%s","maxUsages":%d,"country":"%s"}
@@ -153,7 +153,7 @@ class CouponConcurrencyIntegrationTest {
     }
 
     private HttpStatusCode useCoupon(String code, String userId) {
-        return restTestClient.post().uri("/coupons/{code}/usages", code)
+        return restTestClient.post().uri("/v1/coupons/{code}/usages", code)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-Forwarded-For", IP)
                 .body(("""

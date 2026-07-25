@@ -35,7 +35,7 @@ class CouponIntegrationTest {
 
         @Test
         void shouldCreateCouponAndPersist() {
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"INTEGRATION1","maxUsages":10,"country":"PL"}
@@ -51,14 +51,14 @@ class CouponIntegrationTest {
 
         @Test
         void shouldReturn409WhenDuplicateCode() {
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"DUPLICATE","maxUsages":5,"country":"DE"}
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"duplicate","maxUsages":5,"country":"DE"}
@@ -71,7 +71,7 @@ class CouponIntegrationTest {
 
         @Test
         void shouldReturn400WhenInvalidRequest() {
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"","maxUsages":0,"country":"INVALID"}
@@ -88,14 +88,14 @@ class CouponIntegrationTest {
         void shouldUseCouponAndDecrementRemaining() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"USE1","maxUsages":5,"country":"PL"}
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons/USE1/usages")
+            restTestClient.post().uri("/v1/coupons/USE1/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -114,7 +114,7 @@ class CouponIntegrationTest {
         void shouldReturn404WhenCouponDoesNotExist() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            restTestClient.post().uri("/coupons/NONEXISTENT/usages")
+            restTestClient.post().uri("/v1/coupons/NONEXISTENT/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -128,14 +128,14 @@ class CouponIntegrationTest {
         void shouldReturn403WhenCountryMismatch() {
             given(geoLocationProvider.resolveCountry("8.8.8.8")).willReturn(new Country("US"));
 
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"PLONLY","maxUsages":5,"country":"PL"}
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons/PLONLY/usages")
+            restTestClient.post().uri("/v1/coupons/PLONLY/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "8.8.8.8")
                     .body("""
@@ -149,14 +149,14 @@ class CouponIntegrationTest {
         void shouldReturn409WhenCouponExhausted() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"MAXONE","maxUsages":1,"country":"PL"}
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons/MAXONE/usages")
+            restTestClient.post().uri("/v1/coupons/MAXONE/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -164,7 +164,7 @@ class CouponIntegrationTest {
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons/MAXONE/usages")
+            restTestClient.post().uri("/v1/coupons/MAXONE/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -178,14 +178,14 @@ class CouponIntegrationTest {
         void shouldReturn409WhenSameUserUsesAgain() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"ONEPERUSER","maxUsages":100,"country":"PL"}
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons/ONEPERUSER/usages")
+            restTestClient.post().uri("/v1/coupons/ONEPERUSER/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -193,7 +193,7 @@ class CouponIntegrationTest {
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons/ONEPERUSER/usages")
+            restTestClient.post().uri("/v1/coupons/ONEPERUSER/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -209,14 +209,14 @@ class CouponIntegrationTest {
         void shouldAllowDifferentUsersToUseSameCoupon() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"SHARED","maxUsages":100,"country":"PL"}
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons/SHARED/usages")
+            restTestClient.post().uri("/v1/coupons/SHARED/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -227,7 +227,7 @@ class CouponIntegrationTest {
                     .expectBody()
                     .jsonPath("$.currentUsages").isEqualTo(1);
 
-            restTestClient.post().uri("/coupons/SHARED/usages")
+            restTestClient.post().uri("/v1/coupons/SHARED/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -243,14 +243,14 @@ class CouponIntegrationTest {
         void shouldTreatCouponCodeCaseInsensitively() {
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(new Country("PL"));
 
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"wiosna","maxUsages":10,"country":"PL"}
                             """)
                     .exchange();
 
-            restTestClient.post().uri("/coupons/WIOSNA/usages")
+            restTestClient.post().uri("/v1/coupons/WIOSNA/usages")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Forwarded-For", "89.64.55.1")
                     .body("""
@@ -268,7 +268,7 @@ class CouponIntegrationTest {
 
         @Test
         void shouldEchoIncomingRequestIdInResponse() {
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Request-Id", "test-req-999")
                     .body("""
@@ -281,7 +281,7 @@ class CouponIntegrationTest {
 
         @Test
         void shouldGenerateRequestIdWhenAbsent() {
-            restTestClient.post().uri("/coupons")
+            restTestClient.post().uri("/v1/coupons")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("""
                             {"code":"CID2","maxUsages":1,"country":"PL"}

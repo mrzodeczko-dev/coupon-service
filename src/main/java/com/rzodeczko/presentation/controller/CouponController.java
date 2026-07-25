@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/coupons")
+@RequestMapping("/{version}/coupons")
 @RequiredArgsConstructor
 @Tag(name = "Coupons", description = "Endpoints for creating and using discount coupons")
 public class CouponController {
@@ -46,7 +46,7 @@ public class CouponController {
             @ApiResponse(responseCode = "409", description = "Coupon with this code already exists",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
-    @PostMapping
+    @PostMapping(version = "1")
     public ResponseEntity<CreateCouponResponseDto> createCoupon(
             @RequestBody @Valid CreateCouponRequestDto request) {
 
@@ -84,7 +84,7 @@ public class CouponController {
             @ApiResponse(responseCode = "503", description = "Geolocation service temporarily unavailable",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
-    @PostMapping("/{code}/usages")
+    @PostMapping(version = "1", value = "/{code}/usages")
     public ResponseEntity<UseCouponResponseDto> useCoupon(
             @Parameter(description = "Coupon code", example = "SUMMER26")
             @PathVariable String code,

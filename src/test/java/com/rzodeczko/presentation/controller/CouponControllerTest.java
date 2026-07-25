@@ -44,7 +44,7 @@ class CouponControllerTest {
             var coupon = Coupon.create(new CouponCode("SUMMER26"), 100, new Country("PL"), FIXED_CLOCK);
             given(createCouponUseCase.create(any())).willReturn(coupon);
 
-            mockMvc.perform(post("/coupons")
+            mockMvc.perform(post("/v1/coupons")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"code":"SUMMER26","maxUsages":100,"country":"PL"}
@@ -71,7 +71,7 @@ class CouponControllerTest {
 
             given(useCouponUseCase.use(any())).willReturn(coupon);
 
-            mockMvc.perform(post("/coupons/SUMMER26/usages")
+            mockMvc.perform(post("/v1/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}
@@ -95,7 +95,7 @@ class CouponControllerTest {
 
             given(useCouponUseCase.use(any())).willReturn(coupon);
 
-            mockMvc.perform(post("/coupons/SUMMER26/usages")
+            mockMvc.perform(post("/v1/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}
