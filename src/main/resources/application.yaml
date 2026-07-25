@@ -38,7 +38,7 @@ springdoc:
 
 resilience4j:
   circuitbreaker:
-    # Explicit aspect order — this is already the default (3), Spring Retry aspect uses
+    # Explicit aspect order  - this is already the default (3), Spring Retry aspect uses
     # Ordered.LOWEST_PRECEDENCE - 1, so CB naturally wraps Retry. Pinned here to guard
     # against silent regressions if a future dependency upgrade changes the default.
     # Effect: CB records one event per logical call; retries do not inflate failure-rate.

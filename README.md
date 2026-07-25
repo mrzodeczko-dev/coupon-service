@@ -10,6 +10,7 @@ REST API for creating and redeeming discount coupons with country-based restrict
 - Circuit breaker + retry on the geolocation provider (Resilience4j)
 - Liquibase database migrations
 - OpenAPI / Swagger UI documentation
+- Native API versioning via Spring Boot 4's built-in path-segment strategy
 - Request-level correlation IDs propagated through MDC and echoed on responses
 - Field-level validation errors surfaced through RFC 7807 ProblemDetail
 - ArchUnit tests enforcing hexagonal layer boundaries
@@ -33,9 +34,9 @@ All dependencies point inward. Domain knows nothing about Spring, JPA or HTTP. A
 
 There are two kinds of ports. Input ports (`CreateCouponUseCase`, `UseCouponUseCase`) define what the application can do. The controller calls them without knowing the implementation. Output ports (`CouponRepository`, `CouponUsageRepository`, `GeoLocationProvider`) define what the application needs from the outside world. Infrastructure provides the adapters: `JpaCouponRepositoryAdapter` implements `CouponRepository`, `GeoLocationAdapter` implements `GeoLocationProvider`, and so on.
 
-One thing worth noting is that `CouponUseCaseImpl` lives in the infrastructure package, not in application. That is intentional. It depends on Spring (`@Component`, `@Slf4j`) and on `CouponTransactionBoundary` which is a Spring-managed transactional wrapper. The application layer stays clean, containing only the port interfaces, command records and `CouponService` (which is framework-free, instantiated manually via `@Bean`).
+`CouponUseCaseImpl` lives in the infrastructure package, not in application. It depends on Spring (`@Component`, `@Slf4j`) and on `CouponTransactionBoundary` which is a Spring-managed transactional wrapper, so it does not belong in the application layer. The application layer contains only the port interfaces, command records and `CouponService` (framework-free, instantiated manually via `@Bean`).
 
-The adapter layer introduces an extra mapping step between domain and persistence. `CouponMapper` converts between `Coupon` (domain) and `CouponEntity` (JPA). This means Hibernate annotations never leak into the domain model, and changes to the DB schema do not force changes in domain classes. The JPA repositories (`JpaCouponRepository`) are standard Spring Data interfaces, but they are hidden behind the adapter and never referenced outside of infrastructure.
+The adapter layer has an extra mapping step between domain and persistence. `CouponMapper` converts between `Coupon` (domain) and `CouponEntity` (JPA), so Hibernate annotations never leak into the domain model and DB schema changes don't force changes in domain classes. The JPA repositories (`JpaCouponRepository`) are standard Spring Data interfaces, hidden behind the adapter and never referenced outside of infrastructure.
 
 ## Design Decisions
 
@@ -43,21 +44,21 @@ The adapter layer introduces an extra mapping step between domain and persistenc
 
 `CouponService` is a plain Java class with no `@Service`, no `@Component`, no Spring imports. It gets instantiated via an explicit `@Bean` method in `BeanConfiguration`. The entire domain and application layer can be unit-tested without a Spring context and could be reused in a non-Spring runtime.
 
-Same goes for the domain model: `Coupon`, `CouponCode`, `Country` and all domain exceptions are pure Java with zero framework dependencies.
+The domain model is no different: `Coupon`, `CouponCode`, `Country` and all domain exceptions are pure Java with no framework dependencies.
 
 ### Rich domain model with self-validating Value Objects
 
 `CouponCode` and `Country` are Java records with validation in their compact constructors. You simply cannot create an instance of `Country` with an invalid ISO code or a blank `CouponCode`. Invariants are enforced at construction time, not scattered across service methods.
 
-`Coupon` uses factory methods to separate creation concerns. `Coupon.create()` generates a new ID, sets the timestamp and validates `maxUsages > 0`. `Coupon.reconstitute()` rebuilds from persisted state, trusting the data. This way persistence adapters cannot accidentally bypass domain rules.
+`Coupon` uses factory methods to separate creation from reconstitution. `Coupon.create()` generates a new ID, sets the timestamp and validates `maxUsages > 0`. `Coupon.reconstitute()` rebuilds from persisted state, trusting the data. Persistence adapters cannot accidentally bypass domain rules because there is no public constructor.
 
 Equality is based solely on the aggregate ID (`UUID`), following the DDD entity identity pattern.
 
 ### Transaction Boundary pattern
 
-`CouponTransactionBoundary` is a dedicated class that manages `@Transactional` boundaries and translates infrastructure exceptions into domain exceptions. It inspects the constraint name inside `DataIntegrityViolationException` (via Hibernate's `ConstraintViolationException.getConstraintName()`) to distinguish between different constraint violations — for example, mapping `uq_coupon_usages_code_user_id` to `CouponAlreadyUsedByUserException` while letting an FK violation propagate as-is. This keeps `CouponService` (application layer) free of Spring and JPA annotations, and `CouponUseCaseImpl` (orchestrator) focused on coordinating steps rather than managing transaction scope or exception translation.
+`CouponTransactionBoundary` manages `@Transactional` boundaries and translates infrastructure exceptions into domain exceptions. It inspects the constraint name inside `DataIntegrityViolationException` (via Hibernate's `ConstraintViolationException.getConstraintName()`) to distinguish between different constraint violations - for example, mapping `uq_coupon_usages_code_user_id` to `CouponAlreadyUsedByUserException` while letting an FK violation propagate as-is. `CouponService` (application layer) stays free of Spring and JPA annotations, and `CouponUseCaseImpl` (orchestrator) only coordinates steps without managing transaction scope or exception translation.
 
-It also makes transaction boundaries explicit and testable. You can mock the boundary in unit tests to verify that the orchestrator calls the right transactional operations in the right order.
+Transaction boundaries are explicit and testable - you can mock the boundary in unit tests to verify that the orchestrator calls the right transactional operations in the right order.
 
 ### Coupon usage flow and TOCTOU
 
@@ -67,12 +68,12 @@ The "use coupon" flow runs three steps in this order:
 2. `geoLocationProvider.resolveCountry()` - external REST call to ip-api.com (with retry + circuit breaker, potentially slow)
 3. `executeUsage()` - transactional mutation: find coupon, validate, increment usage, record usage, save
 
-This ordering introduces a theoretical TOCTOU (Time-of-Check-Time-of-Use) race condition between steps 1 and 3. This is a deliberate choice for two reasons:
+There is a theoretical TOCTOU (Time-of-Check-Time-of-Use) race condition between steps 1 and 3. Two reasons why this ordering was chosen anyway:
 
 - If the user has already redeemed the coupon, we reject immediately without wasting a REST call to the geolocation service (fail-fast before expensive I/O).
 - Placing the REST call (which may retry with backoff) inside a transaction would hold a HikariCP connection for seconds, risking pool starvation under load (pool size is 20).
 
-Correctness is guaranteed regardless. `executeUsage()` catches `DataIntegrityViolationException` and checks the constraint name via `ConstraintViolationException.getConstraintName()`. Only `uq_coupon_usages_code_user_id` is mapped to `CouponAlreadyUsedByUserException` — any other constraint violation (e.g. the FK `fk_coupon_usages_code` if the coupon was deleted between steps) propagates unchanged, avoiding a misleading error message.
+Correctness holds regardless. `executeUsage()` catches `DataIntegrityViolationException` and checks the constraint name via `ConstraintViolationException.getConstraintName()`. Only `uq_coupon_usages_code_user_id` is mapped to `CouponAlreadyUsedByUserException`  - any other constraint violation (e.g. the FK `fk_coupon_usages_code` if the coupon was deleted between steps) propagates unchanged, avoiding a misleading error message.
 
 ### `saveAndFlush` over `save`
 
@@ -92,17 +93,27 @@ The FK uses database-level cascading rather than JPA `orphanRemoval`. Adding `or
 
 The geolocation adapter is wrapped in `ResilientGeoLocationAdapter` (decorator pattern) that adds retry (3 attempts, 50ms backoff) on network errors and a circuit breaker (opens after 50% failure rate over 10 calls, 30s recovery window).
 
-This keeps resilience concerns out of the domain and application layers. The decorator delegates to the actual `GeoLocationAdapter`, both implement the same `GeoLocationProvider` port. Neither class is auto-discovered via `@Component` — both are wired explicitly through `@Bean` methods in `BeanConfiguration`, which creates `GeoLocationAdapter` as the delegate and exposes `ResilientGeoLocationAdapter` as the `GeoLocationProvider` bean. This makes the decoration chain visible in one place.
+Resilience concerns stay out of the domain and application layers. The decorator delegates to the actual `GeoLocationAdapter`, both implement the same `GeoLocationProvider` port. Neither class is auto-discovered via `@Component` - both are wired explicitly through `@Bean` methods in `BeanConfiguration`, which creates `GeoLocationAdapter` as the delegate and exposes `ResilientGeoLocationAdapter` as the `GeoLocationProvider` bean. The decoration chain is visible in one place.
 
 ### Exception hierarchy for selective retry
 
 The geolocation layer uses three exception classes:
 
-- `GeoLocationException` — base class for logical failures (invalid IP, API returning `"fail"` status). Maps to 400. Not retried, not recorded by the circuit breaker.
-- `GeoLocationNetworkException` extends `GeoLocationException` — wraps transient network errors (`ResourceAccessException`, `RestClientException`). Triggers retry (3 attempts, 50ms backoff) and is recorded by the circuit breaker. Maps to 503.
-- `GeoLocationUnavailableException` extends `GeoLocationException` — thrown by the circuit breaker fallback when the breaker is open. Not a subclass of `GeoLocationNetworkException`, so it does not trigger retry and is not recorded by the circuit breaker (which would be circular). Maps to 503.
+- `GeoLocationException`  - base class for logical failures (invalid IP, API returning `"fail"` status). Maps to 400. Not retried, not recorded by the circuit breaker.
+- `GeoLocationNetworkException` extends `GeoLocationException`  - wraps transient network errors (`ResourceAccessException`, `RestClientException`). Triggers retry (3 attempts, 50ms backoff) and is recorded by the circuit breaker. Maps to 503.
+- `GeoLocationUnavailableException` extends `GeoLocationException`  - thrown by the circuit breaker fallback when the breaker is open. Not a subclass of `GeoLocationNetworkException`, so it does not trigger retry and is not recorded by the circuit breaker (which would be circular). Maps to 503.
 
-This separation ensures that retries only fire on transient errors, the circuit breaker only counts actual network failures, and an open breaker produces a clean 503 rather than a misleading 400.
+As a result, retries only fire on transient errors, the circuit breaker only counts actual network failures, and an open breaker produces a clean 503 rather than a misleading 400.
+
+### Testing the resilience layer
+
+Two test classes cover the resilience decorator:
+
+`ResilientGeoLocationAdapterTest` - unit test, no Spring context. Checks delegation to the underlying provider and calls the fallback method directly with a `CallNotPermittedException`, verifying that `GeoLocationUnavailableException` is thrown with the IP in the message. Without AOP proxy, retry and circuit breaker annotations have no effect here.
+
+`ResilientGeoLocationAdapterIT` - integration test, boots Spring with Resilience4j and Spring Retry auto-configured. The `ResilientGeoLocationAdapter` bean gets a real CGLIB proxy with both aspects active. Uses a tight circuit breaker config (sliding window of 5, minimum 3 calls, 50% threshold) so state transitions happen fast. Covers: 3 retries on `GeoLocationNetworkException`, no retry on plain `GeoLocationException`, circuit breaker opening after enough failures and rejecting with `GeoLocationUnavailableException`, staying closed below the threshold, and ignoring non-network exceptions in the failure rate.
+
+The mock delegate is a static field, not a Spring bean. If it were registered as a bean implementing `GeoLocationProvider`, Spring would proxy it or confuse it with the `ResilientGeoLocationAdapter` bean (same interface), and Mockito's `reset()` would fail with `NotAMockException`. Keeping the mock outside the application context avoids the problem.
 
 ### Interface segregation on use case ports
 
@@ -112,7 +123,7 @@ This separation ensures that retries only fire on transient errors, the circuit 
 
 `CorrelationIdFilter` runs first in the servlet chain (order `HIGHEST_PRECEDENCE`, using `OncePerRequestFilter`). It reads the `X-Request-Id` header from the incoming request or generates a fresh UUID when absent, places it into SLF4J MDC under key `requestId`, and echoes it back on the response so upstream systems can join their logs to ours. MDC is cleared in a `finally` block, which keeps things correct with virtual threads and any pool that recycles carrier threads.
 
-The Spring Boot log pattern is customized via `logging.pattern.correlation` — a dedicated slot in the default Logback layout that Spring Boot exposes for exactly this purpose. Every log line (application, framework or third-party) carries `[requestId=...]` without touching individual log statements and without a custom `logback-spring.xml` — the built-in `defaults.xml` interpolates `LOG_CORRELATION_PATTERN` from the property.
+The Spring Boot log pattern is customized via `logging.pattern.correlation`  - a dedicated slot in the default Logback layout that Spring Boot exposes for exactly this purpose. Every log line (application, framework or third-party) carries `[requestId=...]` without touching individual log statements and without a custom `logback-spring.xml`  - the built-in `defaults.xml` interpolates `LOG_CORRELATION_PATTERN` from the property.
 
 ### Request validation and error responses
 
@@ -128,7 +139,13 @@ Domain and application exceptions map to specific HTTP statuses (404, 409, 403, 
 - **Framework isolation**: `domain` must not depend on Spring, JPA, Hibernate, Jackson, Swagger, servlet API or Jakarta Validation; Spring stereotypes (`@Component`, `@Service`, `@Repository`, `@RestController`) may not appear in `domain` or `application`.
 - **Package placement**: `@Entity`-annotated classes must live only in `..infrastructure.persistence.entity..`; naming conventions for controllers, services, adapters, entities, mappers, DTOs, exceptions and configuration classes.
 
-The architecture is not just documented — a wrong dependency fails the build.
+A wrong dependency fails the build.
+
+### API versioning
+
+Spring Boot 4's native API versioning with the path-segment strategy (`spring.mvc.apiversion.use.path-segment=0`). The version is extracted from the first URL segment, so all endpoints are prefixed with `/v1/`. Default version is `1` and `detect-supported: true` means Spring auto-discovers supported versions from `version` attributes on controller mappings - no manual list needed.
+
+Each controller declares `@RequestMapping("/{version}/...")` and individual methods can target specific versions via the `version` attribute on `@PostMapping`, `@GetMapping` etc. Controllers evolve independently - one can serve `v1` while another has moved to `v3`. Adding a new version is a one-line change on the method annotation, no routing config or URL duplication.
 
 ### Other notes
 
@@ -154,15 +171,15 @@ MySQL runs as a `StatefulSet` with a `gp3` EBS PersistentVolumeClaim. The `innod
 
 ### Intentionally omitted
 
-Some concerns were left out to keep the scope focused on domain modeling, architecture and concurrency handling:
+A few things were left out to keep the scope on domain modeling, architecture and concurrency:
 
 **Authentication and authorization** - in production the endpoints would be secured with JWT or OAuth2 for the usage endpoint, and API key or role-based access for coupon creation. Left out to avoid obscuring the core domain logic with security boilerplate.
 
-**Rate limiting** - a production deployment would include rate limiting (Bucket4j, API gateway throttling or similar) to protect both the service and the downstream geolocation API. This is an infrastructure concern orthogonal to the business logic this project demonstrates.
+**Rate limiting** - a production deployment would include rate limiting (Bucket4j, API gateway throttling or similar) to protect both the service and the downstream geolocation API. Separate concern from the business logic shown here.
 
 **`X-Forwarded-For` handling** - client IP resolution relies on Spring Boot's `forward-headers-strategy: native`, which delegates to Tomcat's `RemoteIpValve`. The valve processes the `X-Forwarded-For` header and sets `request.getRemoteAddr()` to the real client IP, so the controller does not parse the header manually. Trusted proxy IPs are configured via the `TRUSTED_PROXIES` environment variable (`server.tomcat.remoteip.internal-proxies`), defaulting to standard private ranges (10.x, 172.16-31.x, 192.168.x, 127.x, ::1). In a shared cluster this should be narrowed to the OpenShift router CIDR to prevent other pods from spoofing the header. The existing `NetworkPolicy` limits ingress to the router, which mitigates this risk at the network level.
 
-Integration tests for the usage endpoint use `@SpringBootTest(webEnvironment = RANDOM_PORT)` with `RestTestClient` instead of `MockMvc`. This is a deliberate choice: `MockMvc` uses a mock servlet environment that does not activate Tomcat's `RemoteIpValve`, so `X-Forwarded-For` processing would not be tested. `RANDOM_PORT` starts the real embedded Tomcat, which means the valve runs and the tests verify the full request pipeline including IP resolution. The trade-off is slower test execution, but it ensures the IP handling works end-to-end rather than being silently bypassed in tests.
+Integration tests for the usage endpoint use `@SpringBootTest(webEnvironment = RANDOM_PORT)` with `RestTestClient` instead of `MockMvc`. `MockMvc` uses a mock servlet environment that does not activate Tomcat's `RemoteIpValve`, so `X-Forwarded-For` processing would not be tested. `RANDOM_PORT` starts the real embedded Tomcat, so the valve runs and the tests cover the full request pipeline including IP resolution. Slower, but it catches problems that `MockMvc` would silently miss.
 
 ## Tech Stack
 
@@ -191,12 +208,12 @@ Coverage report is generated at `target/site/jacoco/index.html`.
 
 ## API
 
-Every response includes an `X-Request-Id` header — either the one the caller sent or a fresh UUID minted by `CorrelationIdFilter`. The same ID appears on every log line produced during the request.
+Every response includes an `X-Request-Id` header  - either the one the caller sent or a fresh UUID minted by `CorrelationIdFilter`. The same ID appears on every log line produced during the request.
 
 ### Create Coupon
 
 ```
-POST /coupons
+POST /v1/coupons
 Content-Type: application/json
 X-Request-Id: 8f1e...            # optional; generated if absent
 
@@ -217,7 +234,7 @@ Validation errors return `400` with an RFC 7807 body:
 ### Use Coupon
 
 ```
-POST /coupons/{code}/usages
+POST /v1/coupons/{code}/usages
 Content-Type: application/json
 X-Forwarded-For: 89.64.55.1
 X-Request-Id: 8f1e...            # optional
