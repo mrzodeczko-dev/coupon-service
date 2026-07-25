@@ -2,6 +2,7 @@ package com.rzodeczko.presentation.exception;
 
 import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.application.exception.GeoLocationNetworkException;
+import com.rzodeczko.application.exception.GeoLocationUnavailableException;
 import com.rzodeczko.application.port.input.CreateCouponUseCase;
 import com.rzodeczko.application.port.input.UseCouponUseCase;
 import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
@@ -180,6 +181,21 @@ class GlobalExceptionHandlerTest {
 
     @Nested
     class InfrastructureErrors {
+
+        @Test
+        void shouldReturn503WhenGeoLocationServiceUnavailable() throws Exception {
+            given(useCouponUseCase.use(any()))
+                    .willThrow(new GeoLocationUnavailableException("Circuit breaker is open"));
+
+            mockMvc.perform(post("/v1/coupons/SUMMER26/usages")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"userId":"user-1"}
+                                    """))
+                    .andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.status").value(503))
+                    .andExpect(jsonPath("$.detail").value("Geolocation service is temporarily unavailable"));
+        }
 
         @Test
         void shouldReturn503WhenGeoLocationNetworkFails() throws Exception {

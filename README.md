@@ -15,7 +15,7 @@ REST API for creating and redeeming discount coupons with country-based restrict
 - Field-level validation errors surfaced through RFC 7807 ProblemDetail
 - ArchUnit tests enforcing hexagonal layer boundaries
 - JaCoCo code coverage enforcement (80% minimum)
-- CI/CD pipeline: GitHub Actions → GHCR → OpenShift
+- CI/CD pipeline: GitHub Actions -> GHCR -> OpenShift
 - Kubernetes manifests with security hardening and NetworkPolicy
 
 ## Architecture
@@ -73,7 +73,7 @@ There is a theoretical TOCTOU (Time-of-Check-Time-of-Use) race condition between
 - If the user has already redeemed the coupon, we reject immediately without wasting a REST call to the geolocation service (fail-fast before expensive I/O).
 - Placing the REST call (which may retry with backoff) inside a transaction would hold a HikariCP connection for seconds, risking pool starvation under load (pool size is 20).
 
-Correctness holds regardless. `executeUsage()` catches `DataIntegrityViolationException` and checks the constraint name via `ConstraintViolationException.getConstraintName()`. Only `uq_coupon_usages_code_user_id` is mapped to `CouponAlreadyUsedByUserException`  - any other constraint violation (e.g. the FK `fk_coupon_usages_code` if the coupon was deleted between steps) propagates unchanged, avoiding a misleading error message.
+Correctness holds regardless. `executeUsage()` catches `DataIntegrityViolationException` and checks the constraint name via `ConstraintViolationException.getConstraintName()`. Only `uq_coupon_usages_code_user_id` is mapped to `CouponAlreadyUsedByUserException` - any other constraint violation (e.g. the FK `fk_coupon_usages_code` if the coupon was deleted between steps) propagates unchanged, avoiding a misleading error message.
 
 ### `saveAndFlush` over `save`
 
@@ -99,9 +99,9 @@ Resilience concerns stay out of the domain and application layers. The decorator
 
 The geolocation layer uses three exception classes:
 
-- `GeoLocationException`  - base class for logical failures (invalid IP, API returning `"fail"` status). Maps to 400. Not retried, not recorded by the circuit breaker.
-- `GeoLocationNetworkException` extends `GeoLocationException`  - wraps transient network errors (`ResourceAccessException`, `RestClientException`). Triggers retry (3 attempts, 50ms backoff) and is recorded by the circuit breaker. Maps to 503.
-- `GeoLocationUnavailableException` extends `GeoLocationException`  - thrown by the circuit breaker fallback when the breaker is open. Not a subclass of `GeoLocationNetworkException`, so it does not trigger retry and is not recorded by the circuit breaker (which would be circular). Maps to 503.
+- `GeoLocationException` - base class for logical failures (invalid IP, API returning `"fail"` status). Maps to 400. Not retried, not recorded by the circuit breaker.
+- `GeoLocationNetworkException` extends `GeoLocationException` - wraps transient network errors (`ResourceAccessException`, `RestClientException`). Triggers retry (3 attempts, 50ms backoff) and is recorded by the circuit breaker. Maps to 503.
+- `GeoLocationUnavailableException` extends `GeoLocationException` - thrown by the circuit breaker fallback when the breaker is open. Not a subclass of `GeoLocationNetworkException`, so it does not trigger retry and is not recorded by the circuit breaker (which would be circular). Maps to 503.
 
 As a result, retries only fire on transient errors, the circuit breaker only counts actual network failures, and an open breaker produces a clean 503 rather than a misleading 400.
 
@@ -123,7 +123,7 @@ The mock delegate is a static field, not a Spring bean. If it were registered as
 
 `CorrelationIdFilter` runs first in the servlet chain (order `HIGHEST_PRECEDENCE`, using `OncePerRequestFilter`). It reads the `X-Request-Id` header from the incoming request or generates a fresh UUID when absent, places it into SLF4J MDC under key `requestId`, and echoes it back on the response so upstream systems can join their logs to ours. MDC is cleared in a `finally` block, which keeps things correct with virtual threads and any pool that recycles carrier threads.
 
-The Spring Boot log pattern is customized via `logging.pattern.correlation`  - a dedicated slot in the default Logback layout that Spring Boot exposes for exactly this purpose. Every log line (application, framework or third-party) carries `[requestId=...]` without touching individual log statements and without a custom `logback-spring.xml`  - the built-in `defaults.xml` interpolates `LOG_CORRELATION_PATTERN` from the property.
+The Spring Boot log pattern is customized via `logging.pattern.correlation` - a dedicated slot in the default Logback layout that Spring Boot exposes for exactly this purpose. Every log line (application, framework or third-party) carries `[requestId=...]` without touching individual log statements and without a custom `logback-spring.xml` - the built-in `defaults.xml` interpolates `LOG_CORRELATION_PATTERN` from the property.
 
 ### Request validation and error responses
 
@@ -208,7 +208,7 @@ Coverage report is generated at `target/site/jacoco/index.html`.
 
 ## API
 
-Every response includes an `X-Request-Id` header  - either the one the caller sent or a fresh UUID minted by `CorrelationIdFilter`. The same ID appears on every log line produced during the request.
+Every response includes an `X-Request-Id` header - either the one the caller sent or a fresh UUID minted by `CorrelationIdFilter`. The same ID appears on every log line produced during the request.
 
 ### Create Coupon
 

@@ -81,7 +81,7 @@ class CouponConcurrencyIntegrationTest {
      * Correctness invariant under contention: never oversell.
      * <p>
      * With optimistic locking (@Version) and no server-side retry, only a subset of the
-     * parallel requests will win the race  - the rest see OptimisticLockingFailureException
+     * parallel requests will win the race - the rest see OptimisticLockingFailureException
      * and get 409 (CouponConcurrentModificationException). The exception message even tells
      * the client to retry. So the *guaranteed* property is not "exactly maxUsages succeed
      * in one wave", it's "no more than maxUsages ever succeed, and no request is lost to 500".
@@ -108,7 +108,7 @@ class CouponConcurrencyIntegrationTest {
                 .as("must never oversell: successes in [1, maxUsages]")
                 .isBetween(1L, (long) maxUsages);
         assertThat(statuses)
-                .as("every request must resolve to 200 or 409  - no 500s, no leaks")
+                .as("every request must resolve to 200 or 409 - no 500s, no leaks")
                 .allMatch(s -> s.is2xxSuccessful() || s.value() == HttpStatus.CONFLICT.value());
     }
 

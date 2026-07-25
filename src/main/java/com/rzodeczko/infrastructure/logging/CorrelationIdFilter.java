@@ -20,7 +20,7 @@ import java.util.UUID;
  *   <li>puts it in SLF4J MDC under key {@value #MDC_KEY} so every log line carries it,</li>
  *   <li>echoes it back on the response so downstream systems can join their logs to ours.</li>
  * </ul>
- * MDC is always cleared in a finally block  - safe with virtual threads and any pool.
+ * MDC is always cleared in a finally block - safe with virtual threads and any pool.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

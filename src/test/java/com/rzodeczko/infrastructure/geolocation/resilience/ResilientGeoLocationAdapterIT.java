@@ -53,7 +53,7 @@ class ResilientGeoLocationAdapterIT {
     private static final Country PL = new Country("PL");
 
     /**
-     * Shared mock  - not a Spring bean, so no CGLIB wrapping.
+     * Shared mock - not a Spring bean, so no CGLIB wrapping.
      */
     static final GeoLocationProvider MOCK_DELEGATE = mock(GeoLocationProvider.class);
 
@@ -140,7 +140,7 @@ class ResilientGeoLocationAdapterIT {
                 try {
                     resilientAdapter.resolveCountry(IP);
                 } catch (GeoLocationNetworkException ignored) {
-                    // expected  - retries exhausted
+                    // expected - retries exhausted
                 }
             }
 
