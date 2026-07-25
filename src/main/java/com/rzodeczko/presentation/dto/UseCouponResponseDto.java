@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Response after successfully using a coupon")
 public record UseCouponResponseDto(
-        @Schema(description = "Coupon code", example = "SUMMER25")
+        @Schema(description = "Coupon code", example = "SUMMER26")
         String code,
 
         @Schema(description = "Total usages so far", example = "1")

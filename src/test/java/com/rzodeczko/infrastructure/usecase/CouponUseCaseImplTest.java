@@ -47,8 +47,8 @@ class CouponUseCaseImplTest {
         @Test
         void shouldCreateAndSaveCoupon() {
             //given:
-            var command = new CreateCouponCommand("SUMMER25", 100, "PL");
-            var code = new CouponCode("SUMMER25");
+            var command = new CreateCouponCommand("SUMMER26", 100, "PL");
+            var code = new CouponCode("SUMMER26");
             var country = new Country("PL");
             var savedCoupon = Coupon.create(code, 100, country, FIXED_CLOCK);
 
@@ -59,7 +59,7 @@ class CouponUseCaseImplTest {
 
             //then:
             assertNotNull(result);
-            assertEquals("SUMMER25", result.getCode().value());
+            assertEquals("SUMMER26", result.getCode().value());
             assertEquals("PL", result.getCountry().code());
             then(couponTransactionBoundary).should().save(code, 100, country);
         }
@@ -67,10 +67,10 @@ class CouponUseCaseImplTest {
         @Test
         void shouldPropagateExceptionWhenCodeAlreadyExists() {
             //given:
-            var command = new CreateCouponCommand("SUMMER25", 100, "PL");
+            var command = new CreateCouponCommand("SUMMER26", 100, "PL");
 
             given(couponTransactionBoundary.save(any(), anyInt(), any()))
-                    .willThrow(new CouponAlreadyExistsException("SUMMER25"));
+                    .willThrow(new CouponAlreadyExistsException("SUMMER26"));
 
             //when+then:
             assertThrows(CouponAlreadyExistsException.class,
@@ -84,8 +84,8 @@ class CouponUseCaseImplTest {
         @Test
         void shouldResolveCountryAndUseCoupon() {
             //given:
-            var command = new UseCouponCommand("SUMMER25", "user-1", "89.64.55.1");
-            var code = new CouponCode("SUMMER25");
+            var command = new UseCouponCommand("SUMMER26", "user-1", "89.64.55.1");
+            var code = new CouponCode("SUMMER26");
             var country = new Country("PL");
             var coupon = Coupon.create(code, 10, country, FIXED_CLOCK);
             coupon.use(country);
@@ -107,10 +107,10 @@ class CouponUseCaseImplTest {
         @Test
         void shouldThrowWhenUserAlreadyUsedCoupon() {
             //given:
-            var command = new UseCouponCommand("SUMMER25", "user-1", "89.64.55.1");
-            var code = new CouponCode("SUMMER25");
+            var command = new UseCouponCommand("SUMMER26", "user-1", "89.64.55.1");
+            var code = new CouponCode("SUMMER26");
 
-            willThrow(new CouponAlreadyUsedByUserException("SUMMER25", "user-1"))
+            willThrow(new CouponAlreadyUsedByUserException("SUMMER26", "user-1"))
                     .given(couponTransactionBoundary).validateUserNotUsed(code, "user-1");
 
             //when + then
@@ -139,8 +139,8 @@ class CouponUseCaseImplTest {
         @Test
         void shouldThrowWhenCountryMismatch() {
             //given:
-            var command = new UseCouponCommand("SUMMER25", "user-1", "8.8.8.8");
-            var code = new CouponCode("SUMMER25");
+            var command = new UseCouponCommand("SUMMER26", "user-1", "8.8.8.8");
+            var code = new CouponCode("SUMMER26");
             var usCountry = new Country("US");
 
             given(geoLocationProvider.resolveCountry("8.8.8.8")).willReturn(usCountry);
@@ -155,13 +155,13 @@ class CouponUseCaseImplTest {
         @Test
         void shouldThrowConcurrentModificationWhenOptimisticLockFails() {
             //given:
-            var command = new UseCouponCommand("SUMMER25", "user-1", "89.64.55.1");
-            var code = new CouponCode("SUMMER25");
+            var command = new UseCouponCommand("SUMMER26", "user-1", "89.64.55.1");
+            var code = new CouponCode("SUMMER26");
             var country = new Country("PL");
 
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(country);
             given(couponTransactionBoundary.executeUsage(code, "user-1", country))
-                    .willThrow(new CouponConcurrentModificationException("SUMMER25"));
+                    .willThrow(new CouponConcurrentModificationException("SUMMER26"));
 
             //when + then
             assertThrows(CouponConcurrentModificationException.class,
@@ -171,13 +171,13 @@ class CouponUseCaseImplTest {
         @Test
         void shouldThrowAlreadyUsedWhenDuplicateUsageRaceCondition() {
             //given:
-            var command = new UseCouponCommand("SUMMER25", "user-1", "89.64.55.1");
-            var code = new CouponCode("SUMMER25");
+            var command = new UseCouponCommand("SUMMER26", "user-1", "89.64.55.1");
+            var code = new CouponCode("SUMMER26");
             var country = new Country("PL");
 
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(country);
             given(couponTransactionBoundary.executeUsage(code, "user-1", country))
-                    .willThrow(new CouponAlreadyUsedByUserException("SUMMER25", "user-1"));
+                    .willThrow(new CouponAlreadyUsedByUserException("SUMMER26", "user-1"));
 
             //when + then
             assertThrows(CouponAlreadyUsedByUserException.class,
@@ -187,13 +187,13 @@ class CouponUseCaseImplTest {
         @Test
         void shouldThrowWhenCouponExhausted() {
             //given:
-            var command = new UseCouponCommand("SUMMER25", "user-1", "89.64.55.1");
-            var code = new CouponCode("SUMMER25");
+            var command = new UseCouponCommand("SUMMER26", "user-1", "89.64.55.1");
+            var code = new CouponCode("SUMMER26");
             var country = new Country("PL");
 
             given(geoLocationProvider.resolveCountry("89.64.55.1")).willReturn(country);
             given(couponTransactionBoundary.executeUsage(code, "user-1", country))
-                    .willThrow(new CouponExhaustedException("SUMMER25"));
+                    .willThrow(new CouponExhaustedException("SUMMER26"));
 
             //when + then
             assertThrows(CouponExhaustedException.class,

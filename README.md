@@ -110,11 +110,7 @@ The Spring Boot log pattern is customized via `logging.pattern.correlation` — 
 
 ### Request validation and error responses
 
-DTOs use Bean Validation (`@NotBlank`, `@Size(max = 100)` on `code`, `@Min(1) @Max(1_000_000)` on `maxUsages`, `@Pattern` on `country`). Constraint violations produce `MethodArgumentNotValidException`, which `GlobalExceptionHandler.handleMethodArgumentNotValid` overrides to build an RFC 7807 `ProblemDetail` with:
-
-- `status: 400`
-- `detail` joining every field error as `"field: message"`
-- an `errors[]` array with the same messages, one per field
+DTOs use Bean Validation (`@NotBlank`, `@Size(max = 100)` on `code`, `@Min(1) @Max(1_000_000)` on `maxUsages`, `@Pattern` on `country`). Constraint violations produce `MethodArgumentNotValidException`, which `GlobalExceptionHandler.handleMethodArgumentNotValid` overrides to build an RFC 7807 `ProblemDetail` where `detail` joins every field error as `"field: message"`, separated by `"; "`. Example: `"code: Coupon code must be at most 100 characters; maxUsages: Max usages must not exceed 1000000"`.
 
 Domain and application exceptions map to specific HTTP statuses (404, 409, 403, 503) through dedicated `@ExceptionHandler` methods, all producing `ProblemDetail`.
 
@@ -198,7 +194,7 @@ POST /coupons
 Content-Type: application/json
 X-Request-Id: 8f1e...            # optional; generated if absent
 
-{"code": "SUMMER25", "maxUsages": 100, "country": "PL"}
+{"code": "SUMMER26", "maxUsages": 100, "country": "PL"}
 ```
 
 Validation errors return `400` with an RFC 7807 body:
@@ -208,11 +204,7 @@ Validation errors return `400` with an RFC 7807 body:
   "type": "about:blank",
   "title": "Bad Request",
   "status": 400,
-  "detail": "code: Coupon code must be at most 100 characters; maxUsages: Max usages must not exceed 1000000",
-  "errors": [
-    "code: Coupon code must be at most 100 characters",
-    "maxUsages: Max usages must not exceed 1000000"
-  ]
+  "detail": "code: Coupon code must be at most 100 characters; maxUsages: Max usages must not exceed 1000000"
 }
 ```
 

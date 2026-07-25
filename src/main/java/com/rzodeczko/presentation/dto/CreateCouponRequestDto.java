@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 
 @Schema(description = "Request to create a new discount coupon")
 public record CreateCouponRequestDto(
-        @Schema(description = "Unique coupon code (case-insensitive, stored uppercase)", example = "SUMMER25", maxLength = 100)
+        @Schema(description = "Unique coupon code (case-insensitive, stored uppercase)", example = "SUMMER26", maxLength = 100)
         @NotBlank(message = "Coupon code must not be blank")
         @Size(max = 100, message = "Coupon code must be at most 100 characters")
         String code,

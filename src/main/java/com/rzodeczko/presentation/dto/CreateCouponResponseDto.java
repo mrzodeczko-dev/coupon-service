@@ -9,7 +9,7 @@ public record CreateCouponResponseDto(
         @Schema(description = "Generated coupon ID", example = "550e8400-e29b-41d4-a716-446655440000")
         UUID id,
 
-        @Schema(description = "Normalized coupon code (uppercase)", example = "SUMMER25")
+        @Schema(description = "Normalized coupon code (uppercase)", example = "SUMMER26")
         String code,
 
         @Schema(description = "Maximum allowed usages", example = "100")

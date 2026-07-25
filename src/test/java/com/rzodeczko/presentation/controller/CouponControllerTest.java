@@ -41,22 +41,22 @@ class CouponControllerTest {
 
         @Test
         void shouldReturn201WithCouponData() throws Exception {
-            var coupon = Coupon.create(new CouponCode("SUMMER25"), 100, new Country("PL"), FIXED_CLOCK);
+            var coupon = Coupon.create(new CouponCode("SUMMER26"), 100, new Country("PL"), FIXED_CLOCK);
             given(createCouponUseCase.create(any())).willReturn(coupon);
 
             mockMvc.perform(post("/coupons")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {"code":"SUMMER25","maxUsages":100,"country":"PL"}
+                                    {"code":"SUMMER26","maxUsages":100,"country":"PL"}
                                     """))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.id").value(coupon.getId().toString()))
-                    .andExpect(jsonPath("$.code").value("SUMMER25"))
+                    .andExpect(jsonPath("$.code").value("SUMMER26"))
                     .andExpect(jsonPath("$.maxUsages").value(100))
                     .andExpect(jsonPath("$.country").value("PL"));
 
             then(createCouponUseCase).should().create(argThat(cmd ->
-                    cmd.code().equals("SUMMER25") && cmd.maxUsages() == 100 && cmd.country().equals("PL")
+                    cmd.code().equals("SUMMER26") && cmd.maxUsages() == 100 && cmd.country().equals("PL")
             ));
         }
     }
@@ -66,36 +66,36 @@ class CouponControllerTest {
 
         @Test
         void shouldReturn200WithUsageData() throws Exception {
-            var coupon = Coupon.create(new CouponCode("SUMMER25"), 10, new Country("PL"), FIXED_CLOCK);
+            var coupon = Coupon.create(new CouponCode("SUMMER26"), 10, new Country("PL"), FIXED_CLOCK);
             coupon.use(new Country("PL"));
 
             given(useCouponUseCase.use(any())).willReturn(coupon);
 
-            mockMvc.perform(post("/coupons/SUMMER25/usages")
+            mockMvc.perform(post("/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}
                                     """)
                             .with(request -> { request.setRemoteAddr("89.64.55.1"); return request; }))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("SUMMER25"))
+                    .andExpect(jsonPath("$.code").value("SUMMER26"))
                     .andExpect(jsonPath("$.currentUsages").value(1))
                     .andExpect(jsonPath("$.maxUsages").value(10))
                     .andExpect(jsonPath("$.remainingUsages").value(9));
 
             then(useCouponUseCase).should().use(argThat(cmd ->
-                    cmd.code().equals("SUMMER25") && cmd.userId().equals("user-1") && cmd.ipAddress().equals("89.64.55.1")
+                    cmd.code().equals("SUMMER26") && cmd.userId().equals("user-1") && cmd.ipAddress().equals("89.64.55.1")
             ));
         }
 
         @Test
         void shouldUseRemoteAddr() throws Exception {
-            var coupon = Coupon.create(new CouponCode("SUMMER25"), 10, new Country("PL"), FIXED_CLOCK);
+            var coupon = Coupon.create(new CouponCode("SUMMER26"), 10, new Country("PL"), FIXED_CLOCK);
             coupon.use(new Country("PL"));
 
             given(useCouponUseCase.use(any())).willReturn(coupon);
 
-            mockMvc.perform(post("/coupons/SUMMER25/usages")
+            mockMvc.perform(post("/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}

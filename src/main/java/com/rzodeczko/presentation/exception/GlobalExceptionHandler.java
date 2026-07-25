@@ -2,25 +2,16 @@ package com.rzodeczko.presentation.exception;
 
 import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.application.exception.GeoLocationNetworkException;
-import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
-import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
-import com.rzodeczko.domain.exception.CouponConcurrentModificationException;
-import com.rzodeczko.domain.exception.CouponCountryMismatchException;
-import com.rzodeczko.domain.exception.CouponExhaustedException;
-import com.rzodeczko.domain.exception.CouponNotFoundException;
+import com.rzodeczko.domain.exception.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ProblemDetail;
-import org.springframework.http.ResponseEntity;
+import org.jspecify.annotations.NonNull;
+import org.springframework.http.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -29,15 +20,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex, HttpHeaders headers,
-            HttpStatusCode status, WebRequest request) {
-        List<String> errors = ex.getBindingResult().getFieldErrors().stream()
+            MethodArgumentNotValidException ex, @NonNull HttpHeaders headers,
+            @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+        String detail = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> "%s: %s".formatted(fe.getField(), fe.getDefaultMessage()))
-                .collect(Collectors.toList());
-        log.warn("Validation failed: {}", errors);
-        ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, String.join("; ", errors));
-        body.setProperty("errors", errors);
-        return new ResponseEntity<>(body, headers, HttpStatus.BAD_REQUEST);
+                .collect(Collectors.joining("; "));
+        log.warn("Validation failed: {}", detail);
+        return ResponseEntity.badRequest().body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

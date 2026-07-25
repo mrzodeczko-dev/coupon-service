@@ -54,7 +54,7 @@ class GlobalExceptionHandlerTest {
             mockMvc.perform(post("/coupons")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {"code":"SUMMER25","maxUsages":10,"country":"INVALID"}
+                                    {"code":"SUMMER26","maxUsages":10,"country":"INVALID"}
                                     """))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status").value(400));
@@ -65,13 +65,11 @@ class GlobalExceptionHandlerTest {
             mockMvc.perform(post("/coupons")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {"code":"SUMMER25","maxUsages":1000001,"country":"PL"}
+                                    {"code":"SUMMER26","maxUsages":1000001,"country":"PL"}
                                     """))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("maxUsages")))
-                    .andExpect(jsonPath("$.errors").isArray())
-                    .andExpect(jsonPath("$.errors", org.hamcrest.Matchers.hasSize(1)));
+                    .andExpect(jsonPath("$.detail").value("maxUsages: Max usages must not exceed 1000000"));
         }
 
         @Test
@@ -84,9 +82,7 @@ class GlobalExceptionHandlerTest {
                                     """.formatted(longCode)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("code")))
-                    .andExpect(jsonPath("$.errors").isArray())
-                    .andExpect(jsonPath("$.errors", org.hamcrest.Matchers.hasSize(1)));
+                    .andExpect(jsonPath("$.detail").value("code: Coupon code must be at most 100 characters"));
         }
     }
 
@@ -111,24 +107,24 @@ class GlobalExceptionHandlerTest {
         @Test
         void shouldReturn409WhenCouponAlreadyExists() throws Exception {
             given(createCouponUseCase.create(any()))
-                    .willThrow(new CouponAlreadyExistsException("SUMMER25"));
+                    .willThrow(new CouponAlreadyExistsException("SUMMER26"));
 
             mockMvc.perform(post("/coupons")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {"code":"SUMMER25","maxUsages":10,"country":"PL"}
+                                    {"code":"SUMMER26","maxUsages":10,"country":"PL"}
                                     """))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.status").value(409))
-                    .andExpect(jsonPath("$.detail").value("Coupon with code 'SUMMER25' already exists"));
+                    .andExpect(jsonPath("$.detail").value("Coupon with code 'SUMMER26' already exists"));
         }
 
         @Test
         void shouldReturn409WhenCouponExhausted() throws Exception {
             given(useCouponUseCase.use(any()))
-                    .willThrow(new CouponExhaustedException("SUMMER25"));
+                    .willThrow(new CouponExhaustedException("SUMMER26"));
 
-            mockMvc.perform(post("/coupons/SUMMER25/usages")
+            mockMvc.perform(post("/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}
@@ -140,31 +136,31 @@ class GlobalExceptionHandlerTest {
         @Test
         void shouldReturn409WhenCouponAlreadyUsedByUser() throws Exception {
             given(useCouponUseCase.use(any()))
-                    .willThrow(new CouponAlreadyUsedByUserException("SUMMER25", "user-1"));
+                    .willThrow(new CouponAlreadyUsedByUserException("SUMMER26", "user-1"));
 
-            mockMvc.perform(post("/coupons/SUMMER25/usages")
+            mockMvc.perform(post("/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}
                                     """))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.status").value(409))
-                    .andExpect(jsonPath("$.detail").value("Coupon 'SUMMER25' has already been used by user 'user-1'"));
+                    .andExpect(jsonPath("$.detail").value("Coupon 'SUMMER26' has already been used by user 'user-1'"));
         }
 
         @Test
         void shouldReturn409WhenCouponConcurrentlyModified() throws Exception {
             given(useCouponUseCase.use(any()))
-                    .willThrow(new CouponConcurrentModificationException("SUMMER25"));
+                    .willThrow(new CouponConcurrentModificationException("SUMMER26"));
 
-            mockMvc.perform(post("/coupons/SUMMER25/usages")
+            mockMvc.perform(post("/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}
                                     """))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.status").value(409))
-                    .andExpect(jsonPath("$.detail").value("Coupon 'SUMMER25' was modified concurrently, please retry"));
+                    .andExpect(jsonPath("$.detail").value("Coupon 'SUMMER26' was modified concurrently, please retry"));
         }
 
         @Test
@@ -172,7 +168,7 @@ class GlobalExceptionHandlerTest {
             given(useCouponUseCase.use(any()))
                     .willThrow(new CouponCountryMismatchException("PL", "US"));
 
-            mockMvc.perform(post("/coupons/SUMMER25/usages")
+            mockMvc.perform(post("/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}
@@ -190,7 +186,7 @@ class GlobalExceptionHandlerTest {
             given(useCouponUseCase.use(any()))
                     .willThrow(new GeoLocationNetworkException("Connection timeout", new RuntimeException()));
 
-            mockMvc.perform(post("/coupons/SUMMER25/usages")
+            mockMvc.perform(post("/coupons/SUMMER26/usages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"userId":"user-1"}
