@@ -8,6 +8,7 @@ import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
@@ -38,7 +39,10 @@ public class CouponTransactionBoundary {
         try {
             couponService.recordUsage(code, userId);
         } catch (DataIntegrityViolationException e) {
-            throw new CouponAlreadyUsedByUserException(code.value(), userId);
+            if (isConstraint(e, "uq_coupon_usages_code_user_id")) {
+                throw new CouponAlreadyUsedByUserException(code.value(), userId);
+            }
+            throw e;
         }
 
         try {
@@ -55,7 +59,15 @@ public class CouponTransactionBoundary {
         try {
             return couponService.save(toSave);
         } catch (DataIntegrityViolationException e) {
-            throw new CouponAlreadyExistsException(code.value());
+            if (isConstraint(e, "uk_coupons_code")) {
+                throw new CouponAlreadyExistsException(code.value());
+            }
+            throw e;
         }
+    }
+
+    private boolean isConstraint(DataIntegrityViolationException e, String constraintName) {
+        return e.getCause() instanceof ConstraintViolationException cve
+                && constraintName.equals(cve.getConstraintName());
     }
 }

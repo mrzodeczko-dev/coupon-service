@@ -55,7 +55,7 @@ Equality is based solely on the aggregate ID (`UUID`), following the DDD entity 
 
 ### Transaction Boundary pattern
 
-`CouponTransactionBoundary` is a dedicated class whose only job is annotating methods with `@Transactional`. This keeps `CouponService` (application layer) free of Spring annotations, and `CouponUseCaseImpl` (orchestrator) focused on coordinating steps rather than managing transaction scope.
+`CouponTransactionBoundary` is a dedicated class that manages `@Transactional` boundaries and translates infrastructure exceptions into domain exceptions. It inspects the constraint name inside `DataIntegrityViolationException` (via Hibernate's `ConstraintViolationException.getConstraintName()`) to distinguish between different constraint violations — for example, mapping `uq_coupon_usages_code_user_id` to `CouponAlreadyUsedByUserException` while letting an FK violation propagate as-is. This keeps `CouponService` (application layer) free of Spring and JPA annotations, and `CouponUseCaseImpl` (orchestrator) focused on coordinating steps rather than managing transaction scope or exception translation.
 
 It also makes transaction boundaries explicit and testable. You can mock the boundary in unit tests to verify that the orchestrator calls the right transactional operations in the right order.
 
@@ -72,7 +72,7 @@ This ordering introduces a theoretical TOCTOU (Time-of-Check-Time-of-Use) race c
 - If the user has already redeemed the coupon, we reject immediately without wasting a REST call to the geolocation service (fail-fast before expensive I/O).
 - Placing the REST call (which may retry with backoff) inside a transaction would hold a HikariCP connection for seconds, risking pool starvation under load (pool size is 20).
 
-Correctness is guaranteed regardless. `executeUsage()` catches `DataIntegrityViolationException` from the `UNIQUE(code, user_id)` constraint on `coupon_usages`, so a concurrent duplicate is always rejected at the database level.
+Correctness is guaranteed regardless. `executeUsage()` catches `DataIntegrityViolationException` and checks the constraint name via `ConstraintViolationException.getConstraintName()`. Only `uq_coupon_usages_code_user_id` is mapped to `CouponAlreadyUsedByUserException` — any other constraint violation (e.g. the FK `fk_coupon_usages_code` if the coupon was deleted between steps) propagates unchanged, avoiding a misleading error message.
 
 ### `saveAndFlush` over `save`
 
@@ -84,6 +84,8 @@ Repository adapters use `saveAndFlush()` instead of `save()` to force immediate 
 
 A unique constraint on `(code, user_id)` in `coupon_usages` enforces one-use-per-user at the DB level. A foreign key from `coupon_usages.code` to `coupons.code` with `ON DELETE CASCADE` ensures that deleting a coupon automatically removes all associated usage records.
 
+Coupon creation has a similar TOCTOU window: `existsByCode` can pass for two concurrent requests with the same code, but only one INSERT will succeed. `CouponTransactionBoundary.save()` catches the resulting `DataIntegrityViolationException`, verifies the constraint name is `uk_coupons_code`, and maps it to `CouponAlreadyExistsException` (409).
+
 The FK uses database-level cascading rather than JPA `orphanRemoval`. Adding `orphanRemoval = true` would require a `@OneToMany` collection on `CouponEntity`, which means Hibernate would eagerly or lazily load all usage records every time a coupon is fetched. For a popular coupon with thousands of redemptions, that is wasteful. Since usages are managed through their own repository (`CouponUsageRepository`) and never accessed as a collection on the aggregate, database-level `ON DELETE CASCADE` is the right tool: it handles cleanup without polluting the read path.
 
 ### Resilience as a decorator
@@ -94,9 +96,13 @@ This keeps resilience concerns out of the domain and application layers. The dec
 
 ### Exception hierarchy for selective retry
 
-`GeoLocationNetworkException` extends `GeoLocationException`. Only the network subclass (wrapping `ResourceAccessException`, `RestClientException`) triggers retry. Logical failures like invalid IP or API returning `"fail"` status throw the base `GeoLocationException` and are not retried, since repeating the same request would produce the same result.
+The geolocation layer uses three exception classes:
 
-Same applies to the circuit breaker: only `GeoLocationNetworkException` is recorded as a failure. A bad IP address does not degrade the circuit breaker health metrics.
+- `GeoLocationException` — base class for logical failures (invalid IP, API returning `"fail"` status). Maps to 400. Not retried, not recorded by the circuit breaker.
+- `GeoLocationNetworkException` extends `GeoLocationException` — wraps transient network errors (`ResourceAccessException`, `RestClientException`). Triggers retry (3 attempts, 50ms backoff) and is recorded by the circuit breaker. Maps to 503.
+- `GeoLocationUnavailableException` extends `GeoLocationException` — thrown by the circuit breaker fallback when the breaker is open. Not a subclass of `GeoLocationNetworkException`, so it does not trigger retry and is not recorded by the circuit breaker (which would be circular). Maps to 503.
+
+This separation ensures that retries only fire on transient errors, the circuit breaker only counts actual network failures, and an open breaker produces a clean 503 rather than a misleading 400.
 
 ### Interface segregation on use case ports
 

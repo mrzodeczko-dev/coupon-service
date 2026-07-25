@@ -7,6 +7,7 @@ import com.rzodeczko.domain.exception.CouponConcurrentModificationException;
 import com.rzodeczko.domain.model.Coupon;
 import com.rzodeczko.domain.model.CouponCode;
 import com.rzodeczko.domain.model.Country;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -61,10 +63,22 @@ class CouponTransactionBoundaryTest {
             //given:
             var coupon = Coupon.create(CODE, 100, PL, FIXED_CLOCK);
             given(couponService.buildCoupon(CODE, 100, PL)).willReturn(coupon);
-            given(couponService.save(coupon)).willThrow(new DataIntegrityViolationException("uk_coupons_code"));
+            given(couponService.save(coupon)).willThrow(constraintViolation("uk_coupons_code"));
 
             //when + then:
             assertThrows(CouponAlreadyExistsException.class,
+                    () -> couponTransactionBoundary.save(CODE, 100, PL));
+        }
+
+        @Test
+        void shouldRethrowWhenUnknownConstraintViolatedOnSave() {
+            //given:
+            var coupon = Coupon.create(CODE, 100, PL, FIXED_CLOCK);
+            given(couponService.buildCoupon(CODE, 100, PL)).willReturn(coupon);
+            given(couponService.save(coupon)).willThrow(constraintViolation("some_other_constraint"));
+
+            //when + then:
+            assertThrows(DataIntegrityViolationException.class,
                     () -> couponTransactionBoundary.save(CODE, 100, PL));
         }
     }
@@ -98,11 +112,26 @@ class CouponTransactionBoundaryTest {
             //given:
             var coupon = Coupon.create(CODE, 10, PL, FIXED_CLOCK);
             given(couponService.findByCode(CODE)).willReturn(coupon);
-            willThrow(new DataIntegrityViolationException("uq_coupon_usages_code_user_id"))
+            willThrow(constraintViolation("uq_coupon_usages_code_user_id"))
                     .given(couponService).recordUsage(CODE, USER_ID);
 
             //when + then:
             assertThrows(CouponAlreadyUsedByUserException.class,
+                    () -> couponTransactionBoundary.executeUsage(CODE, USER_ID, PL));
+
+            then(couponService).should(never()).save(any());
+        }
+
+        @Test
+        void shouldRethrowWhenUnknownConstraintViolatedOnRecordUsage() {
+            //given:
+            var coupon = Coupon.create(CODE, 10, PL, FIXED_CLOCK);
+            given(couponService.findByCode(CODE)).willReturn(coupon);
+            willThrow(constraintViolation("fk_coupon_usages_code"))
+                    .given(couponService).recordUsage(CODE, USER_ID);
+
+            //when + then:
+            assertThrows(DataIntegrityViolationException.class,
                     () -> couponTransactionBoundary.executeUsage(CODE, USER_ID, PL));
 
             then(couponService).should(never()).save(any());
@@ -150,5 +179,11 @@ class CouponTransactionBoundaryTest {
             assertEquals(coupon, result);
             then(couponService).should().findByCode(CODE);
         }
+    }
+
+    private static DataIntegrityViolationException constraintViolation(String constraintName) {
+        var cause = new ConstraintViolationException(
+                "constraint violation", new SQLException(), constraintName);
+        return new DataIntegrityViolationException("integrity violation", cause);
     }
 }
