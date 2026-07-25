@@ -5,29 +5,25 @@ import com.rzodeczko.application.exception.GeoLocationNetworkException;
 import com.rzodeczko.application.exception.GeoLocationUnavailableException;
 import com.rzodeczko.domain.exception.*;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
 @Slf4j
-public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+public class GlobalExceptionHandler {
 
-    @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex, @NonNull HttpHeaders headers,
-            @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handle(MethodArgumentNotValidException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> "%s: %s".formatted(fe.getField(), fe.getDefaultMessage()))
                 .collect(Collectors.joining("; "));
         log.warn("Validation failed: {}", detail);
-        return ResponseEntity.badRequest().body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail));
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
