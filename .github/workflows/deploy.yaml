@@ -90,12 +90,13 @@ jobs:
 
       # insecure-skip-tls-verify: trial cluster does not have a trusted CA cert.
       # In production, use a proper CA bundle or remove this flag.
-      - name: Log in to OpenShift
+      - name: Login to OpenShift
         run: |
+          echo "${{ secrets.OPENSHIFT_CA_CERT }}" > /tmp/ca.crt
           oc login \
             --token=${{ secrets.OPENSHIFT_TOKEN }} \
             --server=${{ secrets.OPENSHIFT_SERVER }} \
-            --insecure-skip-tls-verify=true
+            --certificate-authority=/tmp/ca.crt
 
       - name: Apply secrets
         run: |
