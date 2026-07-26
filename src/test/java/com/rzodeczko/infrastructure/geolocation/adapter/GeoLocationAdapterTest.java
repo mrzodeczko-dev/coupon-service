@@ -32,9 +32,9 @@ class GeoLocationAdapterTest {
 
         @Test
         void shouldReturnCountryOnSuccess() {
-            mockServer.expect(requestTo("http://ip-api.com/json/89.64.55.1?fields=status,countryCode,message"))
+            mockServer.expect(requestTo("http://ip-api.com/json/89.64.55.1?fields=status,countryCode,message,proxy,hosting"))
                     .andRespond(withSuccess("""
-                            {"status":"success","countryCode":"PL"}
+                            {"status":"success","countryCode":"PL", "hosting":false, "proxy":false}
                             """, MediaType.APPLICATION_JSON));
 
             var country = adapter.resolveCountry("89.64.55.1");
@@ -45,7 +45,7 @@ class GeoLocationAdapterTest {
 
         @Test
         void shouldThrowWhenApiReturnsFailStatus() {
-            mockServer.expect(requestTo("http://ip-api.com/json/1.2.3.4?fields=status,countryCode,message"))
+            mockServer.expect(requestTo(("http://ip-api.com/json/1.2.3.4?fields=status,countryCode,message,proxy,hosting")))
                     .andRespond(withSuccess("""
                             {"status":"fail","message":"invalid query"}
                             """, MediaType.APPLICATION_JSON));
@@ -63,7 +63,7 @@ class GeoLocationAdapterTest {
 
         @Test
         void shouldThrowOnServerError() {
-            mockServer.expect(requestTo("http://ip-api.com/json/8.8.8.8?fields=status,countryCode,message"))
+            mockServer.expect(requestTo("http://ip-api.com/json/8.8.8.8?fields=status,countryCode,message,proxy,hosting"))
                     .andRespond(withServerError());
 
             assertThrows(GeoLocationException.class,

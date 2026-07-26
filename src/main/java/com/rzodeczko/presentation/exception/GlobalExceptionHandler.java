@@ -3,6 +3,7 @@ package com.rzodeczko.presentation.exception;
 import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.application.exception.GeoLocationNetworkException;
 import com.rzodeczko.application.exception.GeoLocationUnavailableException;
+import com.rzodeczko.application.exception.VpnDetectedException;
 import com.rzodeczko.domain.exception.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,12 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining("; "));
         log.warn("Validation failed: {}", detail);
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+    }
+
+    @ExceptionHandler(VpnDetectedException.class)
+    public ProblemDetail handle(VpnDetectedException e) {
+        log.warn("VPN detected: {}", e.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

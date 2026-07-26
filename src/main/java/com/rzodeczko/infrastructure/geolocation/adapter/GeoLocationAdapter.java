@@ -2,6 +2,7 @@ package com.rzodeczko.infrastructure.geolocation.adapter;
 
 import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.application.exception.GeoLocationNetworkException;
+import com.rzodeczko.application.exception.VpnDetectedException;
 import com.rzodeczko.application.port.output.GeoLocationProvider;
 import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.infrastructure.geolocation.dto.GeoLocationResponse;
@@ -34,7 +35,7 @@ public class GeoLocationAdapter implements GeoLocationProvider {
 
         try {
             var response = restClient.get()
-                    .uri("/json/{ip}?fields=status,countryCode,message", ipAddress)
+                    .uri("/json/{ip}?fields=status,countryCode,message,proxy,hosting", ipAddress)
                     .retrieve()
                     .body(GeoLocationResponse.class);
 
@@ -48,6 +49,12 @@ public class GeoLocationAdapter implements GeoLocationProvider {
                 throw new GeoLocationException(
                         "Geolocation lookup failed for IP: %s, reason: %s"
                                 .formatted(ipAddress, response.message())
+                );
+            }
+
+            if (response.hosting() || response.proxy()) {
+                throw new VpnDetectedException(
+                        "Geolocation lookup failed for IP: %s, reason: VPN/proxy detected".formatted(ipAddress)
                 );
             }
 
