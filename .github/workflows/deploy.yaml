@@ -150,6 +150,20 @@ jobs:
             -f k8s/app/pdb.yaml \
             -f k8s/app/network-policy.yaml
 
+      - name: Ensure minimum replicas
+        run: |
+            CURRENT=$(oc get deployment coupon-service \
+              --namespace=${{ env.OPENSHIFT_NAMESPACE }} \
+              -o jsonpath='{.spec.replicas}')
+            
+            if [ "$CURRENT" -eq 0 ] || [ -z "$CURRENT" ]; then
+              echo "Replicas is 0 or unset, scaling up to 2..."
+              oc scale deployment coupon-service \
+                --replicas=2 \
+                --namespace=${{ env.OPENSHIFT_NAMESPACE }}
+            else
+              echo "Replicas is $CURRENT, HPA will manage scaling"
+            fi
       - name: Wait for app rollout
         run: |
           oc rollout status deployment/coupon-service \
