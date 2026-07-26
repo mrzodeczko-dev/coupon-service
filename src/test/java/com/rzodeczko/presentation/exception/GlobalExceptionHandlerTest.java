@@ -1,16 +1,10 @@
 package com.rzodeczko.presentation.exception;
 
-import com.rzodeczko.application.exception.GeoLocationException;
 import com.rzodeczko.application.exception.GeoLocationNetworkException;
 import com.rzodeczko.application.exception.GeoLocationUnavailableException;
 import com.rzodeczko.application.port.input.CreateCouponUseCase;
 import com.rzodeczko.application.port.input.UseCouponUseCase;
-import com.rzodeczko.domain.exception.CouponAlreadyExistsException;
-import com.rzodeczko.domain.exception.CouponAlreadyUsedByUserException;
-import com.rzodeczko.domain.exception.CouponConcurrentModificationException;
-import com.rzodeczko.domain.exception.CouponCountryMismatchException;
-import com.rzodeczko.domain.exception.CouponExhaustedException;
-import com.rzodeczko.domain.exception.CouponNotFoundException;
+import com.rzodeczko.domain.exception.*;
 import com.rzodeczko.presentation.controller.CouponController;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,9 +14,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.BDDMockito.*;
+import static org.mockito.BDDMockito.any;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(CouponController.class)
 class GlobalExceptionHandlerTest {

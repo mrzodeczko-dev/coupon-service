@@ -6,11 +6,12 @@ import com.rzodeczko.application.exception.GeoLocationUnavailableException;
 import com.rzodeczko.application.exception.VpnDetectedException;
 import com.rzodeczko.domain.exception.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
+import org.jspecify.annotations.NonNull;
+import org.springframework.http.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.stream.Collectors;
@@ -19,13 +20,21 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handle(MethodArgumentNotValidException ex) {
+    @Override
+    public ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex,
+            @NonNull HttpHeaders headers,
+            @NonNull HttpStatusCode status,
+            @NonNull WebRequest request) {
+
         String detail = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> "%s: %s".formatted(fe.getField(), fe.getDefaultMessage()))
                 .collect(Collectors.joining("; "));
+
         log.warn("Validation failed: {}", detail);
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        return handleExceptionInternal(ex, problem, headers, status, request);
     }
 
     @ExceptionHandler(VpnDetectedException.class)
