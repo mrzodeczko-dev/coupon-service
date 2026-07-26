@@ -3,6 +3,8 @@ server:
 
 spring:
   mvc:
+    problemdetails:
+      enabled: true
     apiversion:
       default: "1"
       detect-supported: true
