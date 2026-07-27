@@ -105,5 +105,4 @@ public class CouponController {
 
         return ResponseEntity.ok(response);
     }
-
 }

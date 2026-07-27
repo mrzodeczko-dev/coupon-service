@@ -35,6 +35,17 @@ class GlobalExceptionHandlerTest {
     @Nested
     class ValidationErrors {
 
+
+        @Test
+        void shouldReturn400WhenRequestBodyIsMalformedJson() throws Exception {
+            mockMvc.perform(post("/v1/coupons")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("not a json"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.detail").value("Malformed request body"));
+        }
+
         @Test
         void shouldReturn400WhenRequestBodyInvalid() throws Exception {
             mockMvc.perform(post("/v1/coupons")
@@ -68,6 +79,7 @@ class GlobalExceptionHandlerTest {
                     .andExpect(jsonPath("$.status").value(400))
                     .andExpect(jsonPath("$.detail").value("maxUsages: Max usages must not exceed 1000000"));
         }
+
 
         @Test
         void shouldReturn400WhenCodeExceedsMaxSize() throws Exception {
