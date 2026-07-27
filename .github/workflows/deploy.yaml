@@ -109,6 +109,7 @@ jobs:
           sed \
             -e 's|\${MYSQL_USER}|${{ secrets.MYSQL_USER }}|g' \
             -e 's|\${MYSQL_PASSWORD}|${{ secrets.MYSQL_PASSWORD }}|g' \
+            -e 's|\${FINDIP_API_TOKEN}|${{ secrets.FINDIP_API_TOKEN }}|g' \
             k8s/secrets/app-secret.yaml | oc apply -f -
 
       # GHCR_PAT is a Personal Access Token (not GITHUB_TOKEN) because

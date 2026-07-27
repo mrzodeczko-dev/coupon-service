@@ -66,9 +66,9 @@ management:
       enabled: true
 
 geolocation:
-  provider: ${GEOLOCATION_PROVIDER:findip}
+  provider: ${GEOLOCATION_PROVIDER:ip-api}
   findip:
-    token: ${FINDIP_TOKEN:}
+    token: ${FINDIP_API_TOKEN:}
 
 logging:
   pattern:
