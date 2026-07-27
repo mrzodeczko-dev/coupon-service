@@ -56,14 +56,14 @@ spec:
             httpGet:
               path: /actuator/health
               port: http
-            initialDelaySeconds: 60
-            periodSeconds: 15
+            initialDelaySeconds: 5
+            periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: http
-            initialDelaySeconds: 90
+            initialDelaySeconds: 10
             periodSeconds: 15
             timeoutSeconds: 5
           startupProbe:
