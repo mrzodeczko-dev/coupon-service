@@ -1,5 +1,2 @@
-springdoc:
-  api-docs:
-    enabled: true
-  swagger-ui:
-    enabled: true
+geolocation:
+  provider: ip-api

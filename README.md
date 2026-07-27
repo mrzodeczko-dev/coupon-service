@@ -6,7 +6,7 @@ REST API for creating and redeeming discount coupons with country-based restrict
 
 - Create coupons with a unique code, usage limit and country restriction (ISO 3166-1 alpha-2)
 - Redeem coupons with per-user uniqueness enforcement and IP-based geolocation verification
-- Pluggable geolocation providers: FindIP.net (HTTPS, default) and ip-api.com, switchable via configuration
+- Pluggable geolocation providers: ip-api.com (HTTP, default) and FindIP.net (HTTPS), switchable via configuration
 - VPN/proxy/Tor/hosting detection on both providers
 - Optimistic locking for safe concurrent access
 - Circuit breaker + retry on the geolocation provider (Resilience4j)
@@ -95,8 +95,8 @@ The FK uses database-level cascading rather than JPA `orphanRemoval`. Adding `or
 
 The service supports two geolocation providers behind the `GeoLocationProvider` port:
 
-- `FindIpGeoLocationAdapter` - calls `https://api.findip.net/{ip}/?token={token}` over HTTPS. Returns country via `country.iso_code`, detects VPN/proxy/Tor/hosting via `intelligence.flags`. This is the default provider.
-- `IpApiGeoLocationAdapter` - calls `http://ip-api.com/json/{ip}` over HTTP. Returns country via `countryCode`, detects proxy/hosting via dedicated fields. Available as a fallback for development or environments where FindIP is not configured.
+- `IpApiGeoLocationAdapter` - calls `http://ip-api.com/json/{ip}` over HTTP. Returns country via `countryCode`, detects proxy/hosting via dedicated fields. This is the default provider, works out of the box without any API token.
+- `FindIpGeoLocationAdapter` - calls `https://api.findip.net/{ip}/?token={token}` over HTTPS. Returns country via `country.iso_code`, detects VPN/proxy/Tor/hosting via `intelligence.flags`. Requires a token; intended for production or environments where HTTPS and richer detection matter.
 
 Both adapters share IP address validation logic through `IpAddressValidator`, a utility class in `infrastructure.geolocation.validation` that rejects loopback, site-local and link-local addresses before any external call is made.
 
@@ -108,12 +108,12 @@ Configuration in `application.yaml`:
 
 ```yaml
 geolocation:
-  provider: ${GEOLOCATION_PROVIDER:findip}
+  provider: ${GEOLOCATION_PROVIDER:ip-api}
   findip:
-    token: ${FINDIP_TOKEN:}
+    token: ${FINDIP_API_TOKEN:}
 ```
 
-On OpenShift, `GEOLOCATION_PROVIDER` is set in the ConfigMap and `FINDIP_TOKEN` in the Secret. Switching providers is a ConfigMap change + rolling restart.
+On OpenShift, `GEOLOCATION_PROVIDER` is set in the ConfigMap (overridden to `findip` for production) and `FINDIP_API_TOKEN` in the Secret. Switching providers is a ConfigMap change + rolling restart.
 
 ### Resilience as a decorator
 
@@ -123,13 +123,14 @@ Resilience concerns stay out of the domain and application layers. The decorator
 
 ### Exception hierarchy for selective retry
 
-The geolocation layer uses three exception classes:
+The geolocation layer uses four exception classes:
 
 - `GeoLocationException` - base class for logical failures (invalid IP, API returning an error status). Maps to 400. Not retried, not recorded by the circuit breaker.
 - `GeoLocationNetworkException` extends `GeoLocationException` - wraps transient network errors (`ResourceAccessException`, `RestClientException`). Triggers retry (3 attempts, 50ms backoff) and is recorded by the circuit breaker. Maps to 503.
 - `GeoLocationUnavailableException` extends `GeoLocationException` - thrown by the circuit breaker fallback when the breaker is open. Not a subclass of `GeoLocationNetworkException`, so it does not trigger retry and is not recorded by the circuit breaker (which would be circular). Maps to 503.
+- `VpnDetectedException` extends `GeoLocationException` - thrown by both adapters when the IP is flagged as VPN, proxy, Tor or hosting provider. Maps to 403 Forbidden. Not retried, not recorded by the circuit breaker.
 
-As a result, retries only fire on transient errors, the circuit breaker only counts actual network failures, and an open breaker produces a clean 503 rather than a misleading 400.
+Retries only fire on transient errors, the circuit breaker only counts actual network failures, VPN detection gives a clear 403, and an open breaker produces a clean 503 rather than a misleading 400.
 
 ### Testing the resilience layer
 
@@ -191,7 +192,7 @@ Both geolocation adapters validate that the IP is public (not loopback, site-loc
 
 ### CI/CD and Kubernetes
 
-The project uses a two-stage GitHub Actions pipeline. The CI workflow runs on every push and pull request to `master`: it compiles, runs all tests (unit + integration via Testcontainers), and enforces JaCoCo coverage at 80% minimum. The Deploy workflow triggers only after CI succeeds (`workflow_run`), builds a Docker image, pushes it to GHCR, and deploys to OpenShift.
+The project uses a two-stage GitHub Actions pipeline. The CI workflow runs on every push and pull request to `master`: it compiles, runs all tests (unit + integration via Testcontainers), and enforces JaCoCo coverage at 80% minimum. The Deploy workflow triggers after CI succeeds (`workflow_run`) or can be kicked off manually via `workflow_dispatch`. It builds a Docker image, pushes it to GHCR, and deploys to OpenShift.
 
 The deploy job checks out the exact commit that CI tested (`workflow_run.head_sha`) to prevent deploying an untested revision when fast pushes occur.
 
@@ -207,7 +208,7 @@ A few things were left out to keep the scope on domain modeling, architecture an
 
 **Rate limiting** - a production deployment would include rate limiting (Bucket4j, API gateway throttling or similar) to protect both the service and the downstream geolocation API. Separate concern from the business logic shown here.
 
-**`X-Forwarded-For` handling** - client IP resolution relies on Spring Boot's `forward-headers-strategy: native`, which delegates to Tomcat's `RemoteIpValve`. The valve processes the `X-Forwarded-For` header and sets `request.getRemoteAddr()` to the real client IP, so the controller does not parse the header manually. Trusted proxy IPs are configured via the `TRUSTED_PROXIES` environment variable (`server.tomcat.remoteip.internal-proxies`), defaulting to standard private ranges (10.x, 172.16-31.x, 192.168.x, 127.x, ::1). In a shared cluster this should be narrowed to the OpenShift router CIDR to prevent other pods from spoofing the header. The existing `NetworkPolicy` limits ingress to the router, which mitigates this risk at the network level.
+**`X-Forwarded-For` handling** - client IP resolution relies on Spring Boot's `forward-headers-strategy: native`, which delegates to Tomcat's `RemoteIpValve`. The valve processes the `X-Forwarded-For` header and sets `request.getRemoteAddr()` to the real client IP, so the controller does not parse the header manually. Tomcat's default `internal-proxies` pattern already trusts standard private ranges (10.x, 172.16-31.x, 192.168.x, 127.x, ::1). In a shared cluster this should be narrowed to the OpenShift router CIDR via `server.tomcat.remoteip.internal-proxies` to prevent other pods from spoofing the header. The existing `NetworkPolicy` limits ingress to the router, which mitigates this risk at the network level.
 
 Integration tests for the usage endpoint use `@SpringBootTest(webEnvironment = RANDOM_PORT)` with `RestTestClient` instead of `MockMvc`. `MockMvc` uses a mock servlet environment that does not activate Tomcat's `RemoteIpValve`, so `X-Forwarded-For` processing would not be tested. `RANDOM_PORT` starts the real embedded Tomcat, so the valve runs and the tests cover the full request pipeline including IP resolution. Slower, but it catches problems that `MockMvc` would silently miss.
 
@@ -229,10 +230,11 @@ The service starts at `http://localhost:8080`. Swagger UI is available at `/swag
 
 ### Geolocation provider
 
-The default provider is FindIP.net (HTTPS). To use it locally, set `FINDIP_TOKEN` in your `.env` file or as an environment variable. To fall back to ip-api.com (HTTP, no token required), set:
+The default provider is ip-api.com (HTTP, no token required). To switch to FindIP.net (HTTPS), set `FINDIP_API_TOKEN` in your `.env` file and change the provider:
 
 ```bash
-GEOLOCATION_PROVIDER=ip-api
+GEOLOCATION_PROVIDER=findip
+FINDIP_API_TOKEN=your-token-here
 ```
 
 ### Tests

@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
@@ -39,10 +40,8 @@ import static org.mockito.BDDMockito.given;
  * </ul>
  * They are the difference between "we wrote a race-safe design" and "we proved it holds".
  */
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "geolocation.provider=ip-api"
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("it")
 @AutoConfigureRestTestClient
 @Testcontainers(disabledWithoutDocker = true)
 @Import(TestcontainersConfiguration.class)
