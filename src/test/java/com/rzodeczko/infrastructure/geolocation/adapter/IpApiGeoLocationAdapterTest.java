@@ -15,16 +15,16 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
-class GeoLocationAdapterTest {
+class IpApiGeoLocationAdapterTest {
 
     private MockRestServiceServer mockServer;
-    private GeoLocationAdapter adapter;
+    private IpApiGeoLocationAdapter adapter;
 
     @BeforeEach
     void setUp() {
         var builder = RestClient.builder();
         mockServer = MockRestServiceServer.bindTo(builder).build();
-        adapter = new GeoLocationAdapter(builder);
+        adapter = new IpApiGeoLocationAdapter(builder);
     }
 
     @Nested

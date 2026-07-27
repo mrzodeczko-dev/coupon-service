@@ -6,23 +6,22 @@ import com.rzodeczko.application.exception.VpnDetectedException;
 import com.rzodeczko.application.port.output.GeoLocationProvider;
 import com.rzodeczko.domain.model.Country;
 import com.rzodeczko.infrastructure.geolocation.dto.GeoLocationResponse;
+import com.rzodeczko.infrastructure.geolocation.validation.IpAddressValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Objects;
 
 @Slf4j
-public class GeoLocationAdapter implements GeoLocationProvider {
+public class IpApiGeoLocationAdapter implements GeoLocationProvider {
 
     private static final String IP_API_BASE_URL = "http://ip-api.com";
 
     private final RestClient restClient;
 
-    public GeoLocationAdapter(RestClient.Builder restClientBuilder) {
+    public IpApiGeoLocationAdapter(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder
                 .baseUrl(IP_API_BASE_URL)
                 .build();
@@ -31,7 +30,7 @@ public class GeoLocationAdapter implements GeoLocationProvider {
     @Override
     public Country resolveCountry(String ipAddress) {
         log.debug("Resolving country for IP: {}", ipAddress);
-        validatePublicIp(ipAddress);
+        IpAddressValidator.requirePublicIp(ipAddress);
 
         try {
             var response = restClient.get()
@@ -72,18 +71,4 @@ public class GeoLocationAdapter implements GeoLocationProvider {
         }
     }
 
-    private void validatePublicIp(String ipAddress) {
-        try {
-            InetAddress address = InetAddress.getByName(ipAddress);
-            if (address.isLoopbackAddress() || address.isSiteLocalAddress() || address.isLinkLocalAddress()) {
-                throw new GeoLocationException(
-                        "Cannot resolve country for non-public IP address: %s".formatted(ipAddress)
-                );
-            }
-        } catch (UnknownHostException e) {
-            throw new GeoLocationException(
-                    "Invalid IP address format: %s".formatted(ipAddress), e
-            );
-        }
-    }
 }

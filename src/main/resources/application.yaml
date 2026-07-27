@@ -65,6 +65,11 @@ management:
     circuitbreakers:
       enabled: true
 
+geolocation:
+  provider: ${GEOLOCATION_PROVIDER:findip}
+  findip:
+    token: ${FINDIP_TOKEN:}
+
 logging:
   pattern:
-    correlation: " [requestId=%X{requestId:-}]"
+    correlation: "%X{requestId:- }"

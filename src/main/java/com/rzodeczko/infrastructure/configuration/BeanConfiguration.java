@@ -4,11 +4,14 @@ import com.rzodeczko.application.port.output.GeoLocationProvider;
 import com.rzodeczko.application.service.CouponService;
 import com.rzodeczko.domain.repository.CouponRepository;
 import com.rzodeczko.domain.repository.CouponUsageRepository;
-import com.rzodeczko.infrastructure.geolocation.adapter.GeoLocationAdapter;
+import com.rzodeczko.infrastructure.geolocation.adapter.FindIpGeoLocationAdapter;
+import com.rzodeczko.infrastructure.geolocation.adapter.IpApiGeoLocationAdapter;
 import com.rzodeczko.infrastructure.geolocation.resilience.ResilientGeoLocationAdapter;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.restclient.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
@@ -17,6 +20,7 @@ import java.time.Clock;
 import java.time.Duration;
 
 @Configuration
+@EnableConfigurationProperties(GeoLocationProperties.class)
 public class BeanConfiguration {
 
     @Bean
@@ -32,13 +36,22 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public GeoLocationAdapter geoLocationAdapter(RestClient.Builder restClientBuilder) {
-        return new GeoLocationAdapter(restClientBuilder);
+    public GeoLocationProvider rawGeoLocationProvider(
+            GeoLocationProperties properties,
+            RestClient.Builder restClientBuilder) {
+        return switch (properties.provider()) {
+            case IP_API -> new IpApiGeoLocationAdapter(restClientBuilder);
+            case FINDIP -> new FindIpGeoLocationAdapter(
+                    restClientBuilder,
+                    properties.findip().requireToken()
+            );
+        };
     }
 
     @Bean
-    public GeoLocationProvider geoLocationProvider(GeoLocationAdapter geoLocationAdapter) {
-        return new ResilientGeoLocationAdapter(geoLocationAdapter);
+    @Primary
+    public GeoLocationProvider geoLocationProvider(GeoLocationProvider rawGeoLocationProvider) {
+        return new ResilientGeoLocationAdapter(rawGeoLocationProvider);
     }
 
     @Bean

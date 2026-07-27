@@ -16,7 +16,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.mockito.BDDMockito.given;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "geolocation.provider=ip-api"
+)
 @AutoConfigureRestTestClient
 @Testcontainers(disabledWithoutDocker = true)
 @Import(TestcontainersConfiguration.class)

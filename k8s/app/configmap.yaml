@@ -9,3 +9,4 @@ metadata:
 data:
   SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/coupon_db?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC"
   SPRINGDOC_ENABLED: "false"
+  GEOLOCATION_PROVIDER: "findip"
