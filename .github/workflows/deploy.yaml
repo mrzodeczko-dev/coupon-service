@@ -130,7 +130,11 @@ jobs:
             --dry-run=client -o yaml | oc apply -f -
 
       - name: Apply MySQL manifests
-        run: oc apply -f k8s/mysql/
+        run: |
+          oc apply -f k8s/mysql/service.yaml
+          oc apply -f k8s/mysql/statefulset.yaml
+          oc get pvc mysql-data -n ${{ env.OPENSHIFT_NAMESPACE }} >/dev/null 2>&1 \
+            || oc apply -f k8s/mysql/pvc.yaml
 
       - name: Wait for MySQL readiness
         run: |
