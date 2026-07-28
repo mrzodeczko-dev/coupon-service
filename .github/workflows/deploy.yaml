@@ -1,6 +1,8 @@
 name: Build & Deploy to OpenShift
 
 on:
+  schedule:
+    - cron: '0 6,10,14,18,22 * * *'  # 8:00, 12:00, 16:00, 20:00, 0:00 CEST
   workflow_run:
     workflows: [ "CI" ]
     types: [ completed ]
